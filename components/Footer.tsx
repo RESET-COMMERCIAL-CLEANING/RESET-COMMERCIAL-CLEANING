@@ -51,7 +51,7 @@ export function Footer() {
           >
             <div className="mb-4">
               <img
-                src="/logos/reset-logo-horizontal-dark.svg"
+                src="/RESET-COMMERCIAL-CLEANING/logos/reset-logo-horizontal-dark.svg"
                 alt="RESET Commercial Cleaning"
                 className="h-8 w-auto"
               />

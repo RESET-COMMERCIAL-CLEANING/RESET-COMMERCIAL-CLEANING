@@ -16,7 +16,7 @@ export function Hero() {
       <div
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: 'linear-gradient(135deg, rgba(11, 11, 11, 0.75) 0%, rgba(11, 11, 11, 0.65) 50%, rgba(26, 26, 26, 0.75) 100%), url("/images/about/Hero%20image.png")',
+          backgroundImage: 'linear-gradient(135deg, rgba(11, 11, 11, 0.75) 0%, rgba(11, 11, 11, 0.65) 50%, rgba(26, 26, 26, 0.75) 100%), url("/RESET-COMMERCIAL-CLEANING/images/about/Hero%20image.png")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

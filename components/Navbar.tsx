@@ -32,7 +32,7 @@ export function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
           <img
-            src="/logos/reset-logo-horizontal-dark.svg"
+            src="/RESET-COMMERCIAL-CLEANING/logos/reset-logo-horizontal-dark.svg"
             alt="RESET Commercial Cleaning"
             className="h-14 w-auto"
           />

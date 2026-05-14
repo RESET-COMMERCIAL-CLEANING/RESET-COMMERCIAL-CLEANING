@@ -107,12 +107,12 @@ export default function ServicesPage() {
             {services.map((service, index) => {
               const Icon = service.icon;
               const serviceImages: { [key: number]: string } = {
-                0: '/images/Domain/Office%20Cleaning.png',
-                1: '/images/Domain/Commercial%20Cleaning.png',
-                2: '/images/Domain/Car%20Park%20Cleaning.png',
-                3: '/images/Domain/End%20of%20Lease%20Cleaning.png',
-                4: '/images/Domain/Medical%20Facility%20Cleaning.png',
-                5: '/images/Domain/Scheduled%20Maintenance.png',
+                0: '/RESET-COMMERCIAL-CLEANING/images/Domain/Office%20Cleaning.png',
+                1: '/RESET-COMMERCIAL-CLEANING/images/Domain/Commercial%20Cleaning.png',
+                2: '/RESET-COMMERCIAL-CLEANING/images/Domain/Car%20Park%20Cleaning.png',
+                3: '/RESET-COMMERCIAL-CLEANING/images/Domain/End%20of%20Lease%20Cleaning.png',
+                4: '/RESET-COMMERCIAL-CLEANING/images/Domain/Medical%20Facility%20Cleaning.png',
+                5: '/RESET-COMMERCIAL-CLEANING/images/Domain/Scheduled%20Maintenance.png',
               };
 
               return (

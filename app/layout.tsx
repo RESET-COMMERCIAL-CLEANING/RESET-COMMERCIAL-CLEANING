@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'We don\'t just clean. We Reset. Premium commercial cleaning services for businesses across Sydney.',
   viewport: 'width=device-width, initial-scale=1',
   icons: {
-    icon: '/logos/reset-favicon.svg',
+    icon: '/RESET-COMMERCIAL-CLEANING/logos/reset-favicon.svg',
   },
 };
 

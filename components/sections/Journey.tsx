@@ -122,10 +122,10 @@ export function Journey() {
                         whileHover={{ scale: 1.05 }}
                         className="w-full h-64 rounded-xl overflow-hidden relative"
                         style={{
-                          backgroundImage: index === 0 ? 'url("/images/services/assessment.png")' :
-                                          index === 1 ? 'url("/images/services/cleaning.png")' :
-                                          index === 2 ? 'url("/images/services/reporting.png")' :
-                                          'url("/images/services/assessment.png")',
+                          backgroundImage: index === 0 ? 'url("/RESET-COMMERCIAL-CLEANING/images/services/assessment.png")' :
+                                          index === 1 ? 'url("/RESET-COMMERCIAL-CLEANING/images/services/cleaning.png")' :
+                                          index === 2 ? 'url("/RESET-COMMERCIAL-CLEANING/images/services/reporting.png")' :
+                                          'url("/RESET-COMMERCIAL-CLEANING/images/services/assessment.png")',
                           backgroundSize: 'cover',
                           backgroundPosition: 'center',
                         }}

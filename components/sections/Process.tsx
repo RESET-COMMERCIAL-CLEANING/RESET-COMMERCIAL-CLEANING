@@ -10,28 +10,28 @@ const steps = [
     number: '01',
     title: 'Assessment',
     description: 'We thoroughly evaluate your space, identify specific cleaning needs, and create a customized plan tailored to your business.',
-    image: '/images/services/01 Assessment.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/01 Assessment.png',
   },
   {
     icon: Zap,
     number: '02',
     title: 'Reset Cleaning',
     description: 'Our professional team executes the reset with precision, using industry-leading techniques and eco-friendly products.',
-    image: '/images/services/02 Reset cleaning.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/02 Reset cleaning.png',
   },
   {
     icon: Camera,
     number: '03',
     title: 'Report Delivery',
     description: 'You receive a comprehensive before-and-after photo report, documenting the complete transformation of your space.',
-    image: '/images/services/03 Reporting.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/03 Reporting.png',
   },
   {
     icon: CheckCircle,
     number: '04',
     title: 'Ongoing Maintenance',
     description: 'Scheduled follow-up cleanings keep your space reset-ready. We adapt our approach based on your specific needs.',
-    image: '/images/services/04 Ongoing Maintenance.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/04 Ongoing Maintenance.png',
   },
 ];
 

@@ -16,7 +16,7 @@ const steps = [
       'Custom plan creation',
       'Timeline establishment',
     ],
-    image: '/images/services/01 Assessment.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/01 Assessment.png',
   },
   {
     icon: Zap,
@@ -29,7 +29,7 @@ const steps = [
       'Quality assurance checks',
       'Minimal disruption to operations',
     ],
-    image: '/images/services/02 Reset cleaning.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/02 Reset cleaning.png',
   },
   {
     icon: Camera,
@@ -42,7 +42,7 @@ const steps = [
       'Work documentation',
       'Quality verification',
     ],
-    image: '/images/services/03 Reporting.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/03 Reporting.png',
   },
   {
     icon: CheckCircle,
@@ -55,7 +55,7 @@ const steps = [
       'Continuous improvement',
       'Dedicated support team',
     ],
-    image: '/images/services/04 Ongoing Maintenance.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/04 Ongoing Maintenance.png',
   },
 ];
 
