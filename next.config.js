@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  basePath: '/RESET-COMMERCIAL-CLEANING',
   reactStrictMode: true,
   images: {
     domains: ['localhost', 'images.unsplash.com'],
