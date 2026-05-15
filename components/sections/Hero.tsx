@@ -77,19 +77,19 @@ export function Hero() {
           </motion.div>
         </motion.div>
 
-        {/* Scroll indicator - Hidden on mobile, shown on larger screens */}
+        {/* Scroll indicator - Visible on all screens */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1 }}
-          className="hidden md:flex absolute bottom-8 left-1/2 transform -translate-x-1/2"
+          className="absolute bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-10"
         >
           <motion.div
             animate={{ y: [0, 10, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
             className="flex flex-col items-center gap-2"
           >
-            <span className="text-gray-400 text-sm">Scroll to explore</span>
+            <span className="text-gray-400 text-xs sm:text-sm">Scroll to explore</span>
             <div className="w-6 h-10 border-2 border-reset-green rounded-full flex items-start justify-center p-2">
               <motion.div
                 animate={{ y: [0, 5, 0] }}

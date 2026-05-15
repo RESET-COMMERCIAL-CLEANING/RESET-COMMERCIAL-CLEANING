@@ -59,22 +59,24 @@ export function Navbar() {
           />
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center gap-8">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`font-medium transition-colors duration-300 ${
-                isActive(item.href)
-                  ? 'text-reset-green border-b-2 border-reset-green pb-1'
-                  : 'text-gray-300 hover:text-reset-green'
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
+        {/* Desktop Navigation - Hide on portal pages */}
+        {!isPortalPage && (
+          <div className="hidden lg:flex items-center gap-8">
+            {navItems.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`font-medium transition-colors duration-300 ${
+                  isActive(item.href)
+                    ? 'text-reset-green border-b-2 border-reset-green pb-1'
+                    : 'text-gray-300 hover:text-reset-green'
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* CTA Buttons / Profile Panel */}
         {!isAuthenticated ? (
@@ -109,7 +111,11 @@ export function Navbar() {
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 mt-2 w-80 bg-black border border-reset-green/30 rounded-lg shadow-xl z-50 p-6 glass"
+                  className="absolute right-0 mt-2 w-80 bg-gray-950 border-2 border-reset-green/50 rounded-lg shadow-2xl z-50 p-6"
+                  style={{
+                    backdropFilter: 'blur(10px)',
+                    backgroundColor: 'rgba(3, 7, 18, 0.95)',
+                  }}
                 >
                   {/* Profile Header */}
                   <div className="text-center mb-6 pb-6 border-b border-reset-green/20">
@@ -177,7 +183,7 @@ export function Navbar() {
             className="lg:hidden glass-dark border-t border-reset-green/20"
           >
             <div className="container py-4 flex flex-col gap-4">
-              {navItems.map((item) => (
+              {!isPortalPage && navItems.map((item) => (
                 <Link
                   key={item.label}
                   href={item.href}
