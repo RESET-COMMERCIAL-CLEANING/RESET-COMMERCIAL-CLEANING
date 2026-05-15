@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Calendar, Bell, Download, MessageSquare, LogOut, User, Phone, Mail, TrendingUp, CheckCircle, X, Star, MapPin, Clock, Camera } from 'lucide-react';
 import { useState } from 'react';
+import { generateMonthlyReportPDF } from '@/lib/pdfGenerator';
 
 interface Notification {
   id: string;
@@ -485,7 +486,14 @@ export default function ClientPortal() {
                       </div>
                     </div>
                     <button
-                      onClick={() => addNotification(`Downloading ${report.filename}...`, 'info')}
+                      onClick={() => {
+                        try {
+                          generateMonthlyReportPDF(report, profile);
+                          addNotification(`${report.filename} downloaded successfully!`, 'success');
+                        } catch (error) {
+                          addNotification(`Failed to download report. Please try again.`, 'error');
+                        }
+                      }}
                       className="w-full py-2 text-xs bg-reset-green/20 text-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold flex items-center justify-center gap-2"
                     >
                       <Download size={14} />
