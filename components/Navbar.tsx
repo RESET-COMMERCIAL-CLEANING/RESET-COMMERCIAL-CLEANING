@@ -290,19 +290,51 @@ export function Navbar() {
             >
               <h2 className="text-2xl font-bold text-white mb-6">Edit Profile</h2>
               <div className="space-y-4">
-                {Object.entries(editProfile).map(([key, value]) => (
-                  <div key={key}>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </label>
+                {/* Profile Picture Upload */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-400 mb-2">Profile Picture</label>
+                  <div className="flex flex-col gap-3">
+                    <img
+                      src={editProfile.avatar}
+                      alt="Profile preview"
+                      className="w-20 h-20 rounded-lg object-cover border-2 border-reset-green"
+                    />
                     <input
-                      type="text"
-                      value={value as string}
-                      onChange={(e) => setEditProfile({ ...editProfile, [key]: e.target.value })}
-                      className="w-full px-4 py-2 rounded bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const imageUrl = event.target?.result as string;
+                            setEditProfile({ ...editProfile, avatar: imageUrl });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="w-full px-4 py-2 rounded bg-white/5 border border-reset-green/30 text-gray-300 text-sm focus:border-reset-green focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-reset-green file:text-black file:font-bold file:cursor-pointer hover:file:bg-reset-green/80"
                     />
                   </div>
-                ))}
+                </div>
+
+                {/* Other Profile Fields */}
+                {Object.entries(editProfile).map(([key, value]) => {
+                  if (key === 'avatar') return null; // Skip avatar as we handle it above
+                  return (
+                    <div key={key}>
+                      <label className="block text-sm font-bold text-gray-400 mb-2 capitalize">
+                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                      </label>
+                      <input
+                        type="text"
+                        value={value as string}
+                        onChange={(e) => setEditProfile({ ...editProfile, [key]: e.target.value })}
+                        className="w-full px-4 py-2 rounded bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                      />
+                    </div>
+                  );
+                })}
               </div>
               <div className="flex gap-3 mt-8">
                 <button

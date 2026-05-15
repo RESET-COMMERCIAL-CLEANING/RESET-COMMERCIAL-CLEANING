@@ -31,6 +31,8 @@ interface OngoingJob {
 }
 
 interface Profile {
+  name: string;
+  avatar: string;
   company: string;
   email: string;
   phone: string;
@@ -52,6 +54,8 @@ export default function ClientPortal() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [profile, setProfile] = useState<Profile>({
+    name: 'Sarah Johnson',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
     company: 'Tech Startup HQ',
     email: 'admin@techstartuphq.com',
     phone: '+61 2 9234 5678',
@@ -209,7 +213,7 @@ export default function ClientPortal() {
           className="flex items-center justify-between mb-12"
         >
           <div>
-            <h1 className="text-5xl font-bold text-white mb-2">Welcome Back</h1>
+            <h1 className="text-5xl font-bold text-white mb-2">Welcome Back, {profile.name}</h1>
             <p className="text-gray-400">{profile.company} - Member since January 2025</p>
           </div>
 
