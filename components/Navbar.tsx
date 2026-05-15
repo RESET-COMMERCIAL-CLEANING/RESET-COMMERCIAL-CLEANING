@@ -95,13 +95,13 @@ export function Navbar() {
             </Link>
           </div>
         ) : (
-          <div className="hidden md:block relative">
+          <div className="flex items-center gap-2 relative">
             <button
               onClick={() => setShowProfilePanel(!showProfilePanel)}
-              className="px-4 py-2 rounded-lg bg-reset-green/20 text-reset-green font-semibold hover:bg-reset-green/30 transition-all duration-300 flex items-center gap-2"
+              className="p-2 md:px-4 md:py-2 rounded-lg bg-reset-green/20 text-reset-green font-semibold hover:bg-reset-green/30 transition-all duration-300 flex items-center gap-2"
             >
               <User size={16} />
-              Profile
+              <span className="hidden md:inline">Profile</span>
             </button>
 
             {/* Profile Panel */}
@@ -164,10 +164,10 @@ export function Navbar() {
           </div>
         )}
 
-        {/* Mobile Menu Button */}
+        {/* Mobile/Tablet Menu Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="lg:hidden text-reset-green p-2"
+          className="md:hidden text-reset-green p-2"
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -268,14 +268,14 @@ export function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto"
             onClick={() => setShowProfileEdit(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-black border border-reset-green/30 rounded-xl p-6 sm:p-8 max-w-md w-full mx-4 shadow-2xl"
+              className="bg-black border border-reset-green/30 rounded-xl p-6 sm:p-8 max-w-md w-full mx-4 shadow-2xl my-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="text-2xl font-bold text-white mb-6">Edit Profile</h2>
