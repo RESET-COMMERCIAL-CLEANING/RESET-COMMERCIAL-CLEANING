@@ -400,17 +400,21 @@ export default function SubcontractorPortal() {
 
         {/* Navigation Shortcuts */}
         <div className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
-          <button onClick={() => document.getElementById('schedule-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
-            Schedule
+          <button onClick={() => document.getElementById('schedule-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold text-center">
+            <span className="sm:hidden">Week</span>
+            <span className="hidden sm:inline">Schedule</span>
           </button>
-          <button onClick={() => document.getElementById('current-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
-            Current
+          <button onClick={() => document.getElementById('current-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold text-center">
+            <span className="sm:hidden">Active</span>
+            <span className="hidden sm:inline">Current Job</span>
           </button>
-          <button onClick={() => document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
-            Available
+          <button onClick={() => document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold text-center">
+            <span className="sm:hidden">Open</span>
+            <span className="hidden sm:inline">Available</span>
           </button>
-          <button onClick={() => document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
-            History
+          <button onClick={() => document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold text-center">
+            <span className="sm:hidden">Past</span>
+            <span className="hidden sm:inline">History</span>
           </button>
         </div>
 
@@ -926,29 +930,6 @@ export default function SubcontractorPortal() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Profile Card */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="p-6 rounded-xl glass"
-            >
-              <div className="w-16 h-16 bg-reset-green/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <User className="w-8 h-8 text-reset-green" />
-              </div>
-              <h3 className="text-lg font-bold text-white text-center mb-2">John Smith</h3>
-              <p className="text-sm text-reset-green text-center mb-2 font-bold">Rating: 4.9★</p>
-              <p className="text-xs text-gray-400 text-center mb-1">125 jobs completed</p>
-              <p className="text-xs text-gray-500 text-center mb-6">Earning: ${(24 + acceptedJobs.length) * 65} this month</p>
-              <button
-                onClick={() => addNotification('Edit profile feature coming soon!', 'info')}
-                className="w-full py-2 text-sm text-white bg-reset-green/10 border border-reset-green rounded hover:bg-reset-green/20 transition-colors font-bold"
-              >
-                Edit Profile
-              </button>
-            </motion.div>
-
             {/* Previous Jobs Completed */}
             <motion.div
               id="history-section"
@@ -977,29 +958,6 @@ export default function SubcontractorPortal() {
               </div>
             </motion.div>
 
-            {/* Support */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              viewport={{ once: true }}
-              className="p-6 rounded-xl glass"
-            >
-              <button
-                onClick={() => addNotification('Support request sent! Our team will respond within 1 hour.', 'success')}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-reset-green text-black rounded-lg hover:bg-reset-green/80 transition-colors font-bold mb-3"
-              >
-                <MessageSquare size={18} />
-                Contact Support
-              </button>
-              <Link
-                href="/"
-                className="w-full flex items-center justify-center gap-2 py-3 border-2 border-reset-green text-reset-green rounded-lg hover:bg-reset-green/10 transition-colors font-bold"
-              >
-                <LogOut size={18} />
-                Logout
-              </Link>
-            </motion.div>
           </div>
         </div>
       </div>

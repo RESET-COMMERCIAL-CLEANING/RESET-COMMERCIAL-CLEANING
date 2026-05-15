@@ -1,18 +1,30 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useState } from 'react';
-import { Menu, X, LogOut, User, Phone } from 'lucide-react';
+import { Menu, X, LogOut, User, Phone, MessageSquare } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showProfilePanel, setShowProfilePanel] = useState(false);
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
   const pathname = usePathname();
 
   const isPortalPage = pathname.includes('/portal/');
   const isAuthenticated = isPortalPage;
+
+  const [profile, setProfile] = useState({
+    company: 'Tech Startup HQ',
+    email: 'admin@techstartuphq.com',
+    phone: '+61 2 9234 5678',
+    address: '123 Tech Street, Sydney NSW 2000',
+    industry: 'Technology',
+    squareFeet: '5,000 sqft',
+  });
+
+  const [editProfile, setEditProfile] = useState(profile);
 
   const navItems = [
     { label: 'Services', href: '/services' },
@@ -23,6 +35,11 @@ export function Navbar() {
 
   const isActive = (href: string) => {
     return pathname === href || pathname.startsWith(href + '/');
+  };
+
+  const handleSaveProfile = () => {
+    setProfile(editProfile);
+    setShowProfileEdit(false);
   };
 
   return (
@@ -43,7 +60,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden lg:flex items-center gap-8">
           {navItems.map((item) => (
             <Link
               key={item.label}
@@ -59,7 +76,7 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* CTA Buttons */}
+        {/* CTA Buttons / Profile Panel */}
         {!isAuthenticated ? (
           <div className="hidden md:flex items-center gap-4">
             <Link
@@ -76,138 +93,219 @@ export function Navbar() {
             </Link>
           </div>
         ) : (
-          <div className="hidden md:flex items-center gap-3 relative">
-            {/* Contact Support Button */}
+          <div className="hidden md:block relative">
             <button
-              onClick={() => alert('Connecting to support...')}
-              className="px-4 py-2 rounded-lg border border-reset-green text-reset-green font-semibold hover:bg-reset-green/10 transition-all duration-300 flex items-center gap-2"
+              onClick={() => setShowProfilePanel(!showProfilePanel)}
+              className="px-4 py-2 rounded-lg bg-reset-green/20 text-reset-green font-semibold hover:bg-reset-green/30 transition-all duration-300 flex items-center gap-2"
             >
-              <Phone size={16} />
-              Support
+              <User size={16} />
+              Profile
             </button>
 
-            {/* Profile Menu */}
-            <div className="relative">
-              <button
-                onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="px-4 py-2 rounded-lg bg-reset-green/20 text-reset-green font-semibold hover:bg-reset-green/30 transition-all duration-300 flex items-center gap-2"
-              >
-                <User size={16} />
-                Profile
-              </button>
-
-              {isProfileOpen && (
+            {/* Profile Panel */}
+            <AnimatePresence>
+              {showProfilePanel && (
                 <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 mt-2 w-48 bg-gray-900 border border-reset-green/30 rounded-lg shadow-lg z-50"
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-80 bg-black border border-reset-green/30 rounded-lg shadow-xl z-50 p-6 glass"
                 >
-                  <button
-                    onClick={() => {
-                      alert('Redirecting to profile edit...');
-                      setIsProfileOpen(false);
-                    }}
-                    className="w-full px-4 py-3 text-left text-gray-300 hover:bg-reset-green/10 hover:text-reset-green transition-colors flex items-center gap-2 border-b border-reset-green/20"
-                  >
-                    <User size={16} />
-                    Edit Profile
-                  </button>
-                  <button
-                    onClick={() => {
-                      alert('Logging out...');
-                      setIsProfileOpen(false);
-                      // In production, this would handle actual logout
-                    }}
-                    className="w-full px-4 py-3 text-left text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-colors flex items-center gap-2 rounded-b-lg"
-                  >
-                    <LogOut size={16} />
-                    Logout
-                  </button>
+                  {/* Profile Header */}
+                  <div className="text-center mb-6 pb-6 border-b border-reset-green/20">
+                    <div className="w-16 h-16 bg-reset-green/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                      <User className="w-8 h-8 text-reset-green" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">{profile.company}</h3>
+                    <p className="text-xs text-gray-400 mt-1">{profile.industry} • {profile.squareFeet}</p>
+                    <p className="text-xs text-gray-500 mt-2">{profile.email}</p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => {
+                        setEditProfile(profile);
+                        setShowProfileEdit(true);
+                        setShowProfilePanel(false);
+                      }}
+                      className="w-full py-2 text-sm text-white bg-reset-green/10 border border-reset-green rounded hover:bg-reset-green/20 transition-colors font-bold"
+                    >
+                      Edit Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert('Connecting to support...');
+                        setShowProfilePanel(false);
+                      }}
+                      className="w-full py-2 text-sm text-white bg-blue-600/20 border border-blue-600/30 rounded hover:bg-blue-600/30 transition-colors font-bold flex items-center justify-center gap-2"
+                    >
+                      <MessageSquare size={14} />
+                      Contact Support
+                    </button>
+                    <Link
+                      href="/"
+                      onClick={() => setShowProfilePanel(false)}
+                      className="w-full py-2 text-sm text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors font-bold flex items-center justify-center gap-2 text-center"
+                    >
+                      <LogOut size={14} />
+                      Logout
+                    </Link>
+                  </div>
                 </motion.div>
               )}
-            </div>
+            </AnimatePresence>
           </div>
         )}
 
         {/* Mobile Menu Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-reset-green p-2"
+          className="lg:hidden text-reset-green p-2"
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
       {/* Mobile Menu */}
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="md:hidden glass-dark border-t border-reset-green/20"
-        >
-          <div className="container py-4 flex flex-col gap-4">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`transition-colors py-2 font-medium ${
-                  isActive(item.href)
-                    ? 'text-reset-green border-l-4 border-reset-green pl-2'
-                    : 'text-gray-300 hover:text-reset-green pl-2'
-                }`}
-                onClick={() => setIsOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="lg:hidden glass-dark border-t border-reset-green/20"
+          >
+            <div className="container py-4 flex flex-col gap-4">
+              {navItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={`transition-colors py-2 font-medium ${
+                    isActive(item.href)
+                      ? 'text-reset-green border-l-4 border-reset-green pl-2'
+                      : 'text-gray-300 hover:text-reset-green pl-2'
+                  }`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
 
-            {!isAuthenticated ? (
-              <>
-                <Link
-                  href="/login"
-                  className="px-6 py-2 rounded-lg border border-reset-green text-reset-green font-bold text-center"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/signup"
-                  className="px-6 py-2 rounded-lg bg-reset-green text-black font-bold text-center"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Sign Up
-                </Link>
-              </>
-            ) : (
-              <>
+              {!isAuthenticated ? (
+                <>
+                  <Link
+                    href="/login"
+                    className="px-6 py-2 rounded-lg border border-reset-green text-reset-green font-bold text-center"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-6 py-2 rounded-lg bg-reset-green text-black font-bold text-center"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div className="bg-reset-green/10 border border-reset-green/20 rounded-lg p-4 mt-4">
+                    <div className="text-center mb-4">
+                      <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <User className="w-6 h-6 text-reset-green" />
+                      </div>
+                      <p className="text-sm font-bold text-white">{profile.company}</p>
+                      <p className="text-xs text-gray-400">{profile.industry}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditProfile(profile);
+                        setShowProfileEdit(true);
+                        setIsOpen(false);
+                      }}
+                      className="w-full py-2 text-sm text-white bg-reset-green/20 border border-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold mb-2"
+                    >
+                      Edit Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert('Connecting to support...');
+                        setIsOpen(false);
+                      }}
+                      className="w-full py-2 text-sm text-white bg-blue-600/20 border border-blue-600/30 rounded hover:bg-blue-600/30 transition-colors font-bold flex items-center justify-center gap-2 mb-2"
+                    >
+                      <Phone size={14} />
+                      Support
+                    </button>
+                    <Link
+                      href="/"
+                      className="w-full py-2 text-sm text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors font-bold flex items-center justify-center gap-2 text-center"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <LogOut size={14} />
+                      Logout
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Profile Edit Modal */}
+      <AnimatePresence>
+        {showProfileEdit && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 pt-20"
+            onClick={() => setShowProfileEdit(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-black border border-reset-green/20 rounded-xl p-8 max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-2xl font-bold text-white mb-6">Edit Profile</h2>
+              <div className="space-y-4">
+                {Object.entries(editProfile).map(([key, value]) => (
+                  <div key={key}>
+                    <label className="block text-sm font-bold text-gray-400 mb-2 capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </label>
+                    <input
+                      type="text"
+                      value={value as string}
+                      onChange={(e) => setEditProfile({ ...editProfile, [key]: e.target.value })}
+                      className="w-full px-4 py-2 rounded bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-3 mt-8">
                 <button
-                  onClick={() => alert('Connecting to support...')}
-                  className="px-6 py-2 rounded-lg border border-reset-green text-reset-green font-bold flex items-center justify-center gap-2"
+                  onClick={() => setShowProfileEdit(false)}
+                  className="flex-1 py-2 border border-reset-green text-reset-green rounded hover:bg-reset-green/10 transition-colors font-bold"
                 >
-                  <Phone size={18} />
-                  Contact Support
+                  Cancel
                 </button>
                 <button
-                  onClick={() => alert('Redirecting to profile edit...')}
-                  className="px-6 py-2 rounded-lg bg-reset-green/20 text-reset-green font-bold flex items-center justify-center gap-2"
+                  onClick={handleSaveProfile}
+                  className="flex-1 py-2 bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-bold"
                 >
-                  <User size={18} />
-                  Edit Profile
+                  Save Changes
                 </button>
-                <button
-                  onClick={() => alert('Logging out...')}
-                  className="px-6 py-2 rounded-lg border border-red-500 text-red-400 font-bold flex items-center justify-center gap-2"
-                >
-                  <LogOut size={18} />
-                  Logout
-                </button>
-              </>
-            )}
-          </div>
-        </motion.div>
-      )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
   );
 }
