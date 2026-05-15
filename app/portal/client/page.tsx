@@ -226,8 +226,24 @@ export default function ClientPortal() {
           </motion.div>
         </motion.div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
+        {/* Stats - Navigation Shortcuts */}
+        <div className="mb-8 flex flex-wrap gap-2 justify-center lg:justify-start">
+          <button onClick={() => document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+            Jobs in Progress
+          </button>
+          <button onClick={() => document.getElementById('completed-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+            Completed Jobs
+          </button>
+          <button onClick={() => document.getElementById('gallery-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+            Gallery
+          </button>
+          <button onClick={() => document.getElementById('reports-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+            Reports
+          </button>
+        </div>
+
+        {/* Stats - KPIs */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           {stats.map((stat, i) => {
             const Icon = stat.icon;
             return (
@@ -238,12 +254,12 @@ export default function ClientPortal() {
                 transition={{ duration: 0.6, delay: i * 0.1 }}
                 className="p-4 rounded-xl glass"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col items-center lg:items-start gap-2 lg:justify-between lg:flex-row">
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">{stat.label}</p>
-                    <p className="text-2xl font-bold text-white">{stat.value}</p>
+                    <p className="text-gray-400 text-xs lg:text-sm mb-1 text-center lg:text-left">{stat.label}</p>
+                    <p className="text-lg lg:text-2xl font-bold text-white text-center lg:text-left">{stat.value}</p>
                   </div>
-                  <Icon className="w-6 h-6 text-reset-green" />
+                  <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-reset-green flex-shrink-0" />
                 </div>
               </motion.div>
             );
@@ -256,31 +272,29 @@ export default function ClientPortal() {
           <div className="lg:col-span-2 space-y-8">
             {/* Ongoing Jobs */}
             <motion.div
+              id="jobs-section"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="p-8 rounded-xl glass"
+              className="p-6 lg:p-8 rounded-xl glass"
             >
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                <Clock className="w-6 h-6 text-reset-green" />
+              <h2 className="text-xl lg:text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                <Clock className="w-5 h-5 lg:w-6 lg:h-6 text-reset-green" />
                 Jobs in Progress
               </h2>
-              <div className="space-y-6">
+              <div className="space-y-4 lg:space-y-6">
                 {ongoingJobs.map((job) => (
-                  <div key={job.id} className="p-6 border border-reset-green/20 rounded-lg">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="font-bold text-white text-lg mb-1">{job.type}</h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                          <MapPin size={16} className="text-reset-green" />
-                          {job.location}
+                  <div key={job.id} className="p-4 lg:p-6 border border-reset-green/20 rounded-lg">
+                    <div className="mb-4">
+                      <h3 className="font-bold text-white text-base lg:text-lg mb-2">{job.type}</h3>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-400 mb-2">
+                        <div className="flex items-center gap-2">
+                          <MapPin size={14} className="text-reset-green flex-shrink-0" />
+                          <span>{job.location}</span>
                         </div>
-                        <p className="text-xs text-gray-500">Started: {job.startDate} | Est. {job.estimatedHours} hours</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400 mb-1">Assigned Team</p>
-                        <p className="font-bold text-reset-green text-sm">{job.subcontractor}</p>
+                        <span className="hidden sm:inline text-gray-500">•</span>
+                        <span className="text-xs text-gray-500">Est. {job.estimatedHours}h</span>
                       </div>
                     </div>
 
@@ -298,27 +312,10 @@ export default function ClientPortal() {
                       </div>
                     </div>
 
-                    {/* Photo Gallery */}
-                    <div className="p-4 bg-black/30 rounded-lg mb-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Camera size={16} className="text-reset-green" />
-                        <p className="text-sm font-bold text-white">Latest Photos ({job.photos.length})</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {job.photos.slice(-2).map((photo) => (
-                          <div key={photo.id} className="relative">
-                            <div className="aspect-square bg-gradient-to-br from-reset-green/20 to-reset-green/5 rounded flex items-center justify-center cursor-pointer hover:from-reset-green/30 transition-colors group">
-                              <span className="text-2xl">{photo.image}</span>
-                              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/50 rounded flex items-center justify-center transition-opacity text-xs text-gray-300">
-                                {photo.date}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <button className="w-full mt-3 py-2 text-xs bg-reset-green/20 text-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold">
-                        View All Photos ({job.photos.length})
-                      </button>
+                    {/* Assigned Team - More Visible on Mobile */}
+                    <div className="mb-4 p-3 bg-reset-green/10 rounded">
+                      <p className="text-xs text-gray-400 mb-1">Assigned Team</p>
+                      <p className="font-bold text-reset-green text-sm">{job.subcontractor}</p>
                     </div>
                   </div>
                 ))}
@@ -327,13 +324,14 @@ export default function ClientPortal() {
 
             {/* Completed Jobs with Ratings */}
             <motion.div
+              id="completed-section"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               viewport={{ once: true }}
-              className="p-8 rounded-xl glass"
+              className="p-6 lg:p-8 rounded-xl glass"
             >
-              <h2 className="text-2xl font-bold text-white mb-6">Completed Jobs</h2>
+              <h2 className="text-xl lg:text-2xl font-bold text-white mb-6">Completed Jobs</h2>
               <div className="space-y-4">
                 {completedJobs.map((job) => (
                   <div key={job.id} className="p-4 border border-reset-green/20 rounded-lg">
@@ -369,18 +367,19 @@ export default function ClientPortal() {
 
             {/* Before & After Gallery - 30 Day Archive */}
             <motion.div
+              id="gallery-section"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="p-8 rounded-xl glass"
+              className="p-6 lg:p-8 rounded-xl glass"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <Camera className="w-6 h-6 text-reset-green" />
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-3">
+                <h2 className="text-xl lg:text-2xl font-bold text-white flex items-center gap-2">
+                  <Camera className="w-5 h-5 lg:w-6 lg:h-6 text-reset-green" />
                   Before & After Gallery
                 </h2>
-                <div className="text-xs bg-reset-green/20 text-reset-green px-3 py-1 rounded-full">
+                <div className="text-xs bg-reset-green/20 text-reset-green px-3 py-1 rounded-full w-fit">
                   30 Day Archive
                 </div>
               </div>
@@ -465,13 +464,14 @@ export default function ClientPortal() {
 
             {/* Monthly Reports */}
             <motion.div
+              id="reports-section"
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               viewport={{ once: true }}
               className="p-6 rounded-xl glass"
             >
-              <h3 className="text-lg font-bold text-white mb-4">Monthly Reports</h3>
+              <h3 className="text-base lg:text-lg font-bold text-white mb-4">Monthly Reports</h3>
               <div className="space-y-3">
                 {monthlyReports.map((report, i) => (
                   <motion.div

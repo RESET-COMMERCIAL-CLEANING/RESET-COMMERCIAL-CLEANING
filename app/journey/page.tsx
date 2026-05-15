@@ -29,7 +29,7 @@ const steps = [
       'Quality assurance checks',
       'Minimal disruption to operations',
     ],
-    image: '/RESET-COMMERCIAL-CLEANING/images/services/02 Reset cleaning.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/03 Reporting.png',
   },
   {
     icon: Camera,
@@ -42,7 +42,7 @@ const steps = [
       'Work documentation',
       'Quality verification',
     ],
-    image: '/RESET-COMMERCIAL-CLEANING/images/services/03 Reporting.png',
+    image: '/RESET-COMMERCIAL-CLEANING/images/services/02 Reset cleaning.png',
   },
   {
     icon: CheckCircle,
@@ -70,11 +70,11 @@ export default function JourneyPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-6xl md:text-7xl font-bold mb-6">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6">
               <span className="block text-white">Your RESET</span>
               <span className="gradient-text">Journey</span>
             </h1>
-            <p className="text-xl text-gray-400 max-w-2xl">
+            <p className="text-lg md:text-xl text-gray-400 max-w-2xl">
               Four simple steps to transform your business space.
             </p>
           </motion.div>
@@ -102,21 +102,21 @@ export default function JourneyPage() {
                 >
                   {/* Content */}
                   <div className="flex-1">
-                    <div className="rounded-xl glass p-8 hover:glass-dark transition-all duration-300">
-                      <div className="flex items-center gap-4 mb-6">
-                        <span className="text-5xl font-bold text-reset-green">{step.number}</span>
-                        <div className="w-16 h-16 bg-reset-green/20 rounded-xl flex items-center justify-center">
-                          <Icon className="w-8 h-8 text-reset-green" />
+                    <div className="rounded-xl glass p-6 lg:p-8 hover:glass-dark transition-all duration-300">
+                      <div className="flex items-center gap-3 lg:gap-4 mb-6">
+                        <span className="text-3xl lg:text-5xl font-bold text-reset-green">{step.number}</span>
+                        <div className="w-12 h-12 lg:w-16 lg:h-16 bg-reset-green/20 rounded-xl flex items-center justify-center">
+                          <Icon className="w-6 h-6 lg:w-8 lg:h-8 text-reset-green" />
                         </div>
                       </div>
 
-                      <h3 className="text-3xl font-bold text-white mb-4">{step.title}</h3>
-                      <p className="text-gray-400 mb-6 text-lg">{step.description}</p>
+                      <h3 className="text-xl lg:text-3xl font-bold text-white mb-4">{step.title}</h3>
+                      <p className="text-gray-400 mb-6 text-base lg:text-lg">{step.description}</p>
 
                       {/* Details List */}
-                      <ul className="space-y-3 mb-6">
+                      <ul className="space-y-2 lg:space-y-3 mb-6">
                         {step.details.map((detail, i) => (
-                          <li key={i} className="flex items-start gap-3 text-gray-400">
+                          <li key={i} className="flex items-start gap-3 text-gray-400 text-sm lg:text-base">
                             <div className="w-2 h-2 bg-reset-green rounded-full mt-2 flex-shrink-0" />
                             <span>{detail}</span>
                           </li>
@@ -129,7 +129,7 @@ export default function JourneyPage() {
                   <div className="flex-1">
                     <motion.div
                       whileHover={{ scale: 1.05 }}
-                      className="w-full h-96 rounded-xl bg-gradient-to-br from-reset-green/20 to-reset-green/5 flex items-center justify-center overflow-hidden glass"
+                      className="w-full h-64 lg:h-96 rounded-xl bg-gradient-to-br from-reset-green/20 to-reset-green/5 flex items-center justify-center overflow-hidden glass"
                     >
                       <img
                         src={step.image}
@@ -166,9 +166,9 @@ export default function JourneyPage() {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl font-bold text-white mb-8">Why This Approach?</h2>
+            <h2 className="text-2xl md:text-4xl font-bold text-white mb-8">Why This Approach?</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
               {[
                 {
                   title: 'Transparent',
@@ -193,10 +193,10 @@ export default function JourneyPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                   viewport={{ once: true }}
-                  className="p-6 rounded-lg glass"
+                  className="p-5 lg:p-6 rounded-lg glass"
                 >
-                  <h3 className="text-xl font-bold text-white mb-2">{reason.title}</h3>
-                  <p className="text-gray-400">{reason.description}</p>
+                  <h3 className="text-lg lg:text-xl font-bold text-white mb-2">{reason.title}</h3>
+                  <p className="text-sm lg:text-base text-gray-400">{reason.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -213,21 +213,21 @@ export default function JourneyPage() {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-5xl md:text-6xl font-bold mb-6">Ready to Start Your Journey?</h2>
-            <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-6">Ready to Start Your Journey?</h2>
+            <p className="text-base md:text-lg lg:text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
               Begin your reset journey today with a free assessment.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
               <Link
                 href="/quote"
-                className="inline-flex items-center gap-2 px-10 py-4 bg-reset-green text-black font-bold rounded-lg hover:bg-opacity-80 transition-all glow-green-hover"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 sm:px-10 py-3 sm:py-4 bg-reset-green text-black font-bold rounded-lg hover:bg-opacity-80 transition-all glow-green-hover text-center"
               >
                 Get Quote
                 <ArrowRight size={20} />
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 px-10 py-4 border-2 border-reset-green text-reset-green font-bold rounded-lg hover:bg-reset-green/10 transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 sm:px-10 py-3 sm:py-4 border-2 border-reset-green text-reset-green font-bold rounded-lg hover:bg-reset-green/10 transition-all text-center"
               >
                 Contact Us
                 <ArrowRight size={20} />

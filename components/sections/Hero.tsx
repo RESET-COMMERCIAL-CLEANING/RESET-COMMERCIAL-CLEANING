@@ -27,18 +27,18 @@ export function Hero() {
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-reset-green/5 rounded-full blur-3xl animate-pulse z-0" style={{ animationDelay: '1s' }} />
 
       {/* Content */}
-      <div className="relative z-10 container flex flex-col items-start justify-center h-full max-w-4xl">
+      <div className="relative z-10 container flex flex-col items-start justify-center h-full max-w-4xl pb-32 md:pb-0">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="max-w-2xl"
+          className="max-w-2xl px-4 md:px-0"
         >
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight"
+            className="text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 leading-tight"
           >
             <span className="block text-white">We don't just</span>
             <span className="block gradient-text">clean. We Reset.</span>
@@ -48,7 +48,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-xl md:text-2xl text-gray-300 mb-8 max-w-xl leading-relaxed"
+            className="text-base md:text-lg lg:text-2xl text-gray-300 mb-8 max-w-xl leading-relaxed"
           >
             Premium commercial cleaning for businesses across Sydney. Transform your space with our precision and expertise.
           </motion.p>
@@ -58,31 +58,31 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="flex flex-col md:flex-row gap-4"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4"
           >
             <Link
               href="/quote"
-              className="px-8 py-4 rounded-lg bg-reset-green text-black font-bold hover:bg-opacity-80 transition-all duration-300 glow-green-hover inline-flex items-center justify-center gap-2 w-full md:w-auto"
+              className="px-6 sm:px-8 py-3 sm:py-4 rounded-lg bg-reset-green text-black font-bold hover:bg-opacity-80 transition-all duration-300 glow-green-hover inline-flex items-center justify-center gap-2"
             >
               Get a Quote
-              <ArrowRight size={20} />
+              <ArrowRight size={18} className="hidden sm:inline" />
             </Link>
             <Link
               href="#services"
-              className="px-8 py-4 rounded-lg border-2 border-reset-green text-reset-green font-bold hover:bg-reset-green/10 transition-all duration-300 inline-flex items-center justify-center gap-2 w-full md:w-auto"
+              className="px-6 sm:px-8 py-3 sm:py-4 rounded-lg border-2 border-reset-green text-reset-green font-bold hover:bg-reset-green/10 transition-all duration-300 inline-flex items-center justify-center gap-2"
             >
               Explore Services
-              <ArrowRight size={20} />
+              <ArrowRight size={18} className="hidden sm:inline" />
             </Link>
           </motion.div>
         </motion.div>
 
-        {/* Scroll indicator */}
+        {/* Scroll indicator - Hidden on mobile, shown on larger screens */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1 }}
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
+          className="hidden md:flex absolute bottom-8 left-1/2 transform -translate-x-1/2"
         >
           <motion.div
             animate={{ y: [0, 10, 0] }}

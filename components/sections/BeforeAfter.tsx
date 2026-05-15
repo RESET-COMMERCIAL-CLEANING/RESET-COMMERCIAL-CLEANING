@@ -29,11 +29,20 @@ function ComparisonSlider({ before, after, title, completed: initialCompleted }:
   const [sliderPos, setSliderPos] = useState(50);
   const [completed, setCompleted] = useState(initialCompleted);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+  const updateSliderPosition = (clientX: number, rect: DOMRect) => {
+    const x = clientX - rect.left;
     const percentage = (x / rect.width) * 100;
     setSliderPos(Math.min(Math.max(percentage, 0), 100));
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    updateSliderPosition(e.clientX, rect);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    updateSliderPosition(e.touches[0].clientX, rect);
   };
 
   return (
@@ -45,8 +54,9 @@ function ComparisonSlider({ before, after, title, completed: initialCompleted }:
       className="relative w-full"
     >
       <div
-        className="relative w-full h-96 md:h-[500px] rounded-xl overflow-hidden cursor-col-resize group"
+        className="relative w-full h-64 md:h-96 lg:h-[500px] rounded-xl overflow-hidden cursor-col-resize group touch-none"
         onMouseMove={handleMouseMove}
+        onTouchMove={handleTouchMove}
       >
         {/* After image (background) */}
         <div className="absolute inset-0 bg-gray-900 rounded-xl overflow-hidden">
@@ -99,16 +109,16 @@ function ComparisonSlider({ before, after, title, completed: initialCompleted }:
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-4">
-        <h3 className="text-xl font-bold text-white">{title}</h3>
+      <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 justify-between sm:justify-start">
+        <h3 className="text-base md:text-lg lg:text-xl font-bold text-white">{title}</h3>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
             checked={completed}
             onChange={(e) => setCompleted(e.target.checked)}
-            className="w-5 h-5 accent-reset-green rounded cursor-pointer"
+            className="w-4 h-4 md:w-5 md:h-5 accent-reset-green rounded cursor-pointer"
           />
-          <span className="text-sm text-gray-300">Complete</span>
+          <span className="text-xs md:text-sm text-gray-300">Complete</span>
         </label>
       </div>
     </motion.div>
@@ -117,27 +127,27 @@ function ComparisonSlider({ before, after, title, completed: initialCompleted }:
 
 export function BeforeAfter() {
   return (
-    <section className="relative w-full bg-black py-20 md:py-32">
-      <div className="container">
+    <section className="relative w-full bg-black py-16 md:py-20 lg:py-32">
+      <div className="container px-4 md:px-0">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="max-w-2xl mb-16"
+          className="max-w-2xl mb-12 md:mb-16"
         >
-          <h2 className="text-5xl md:text-6xl font-bold mb-6">
+          <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6">
             <span className="block text-white">See The</span>
             <span className="gradient-text">Difference</span>
           </h2>
-          <p className="text-xl text-gray-400">
-            Real transformations from our clients. Move the slider to see the impact of a true reset.
+          <p className="text-base md:text-lg lg:text-xl text-gray-400">
+            Real transformations from our clients. Move or drag the slider to see the impact of a true reset.
           </p>
         </motion.div>
 
         {/* Comparisons Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {comparisons.map((comparison, index) => (
             <ComparisonSlider
               key={index}

@@ -398,13 +398,29 @@ export default function SubcontractorPortal() {
           <p className="text-gray-400">Manage your jobs and extended contracts - Member since February 2025</p>
         </motion.div>
 
-        {/* Stats */}
+        {/* Navigation Shortcuts */}
+        <div className="mb-8 flex flex-wrap gap-2 justify-center lg:justify-start">
+          <button onClick={() => document.getElementById('schedule-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+            Schedule
+          </button>
+          <button onClick={() => document.getElementById('current-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+            Current Assignment
+          </button>
+          <button onClick={() => document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+            Available Jobs
+          </button>
+          <button onClick={() => document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+            Job History
+          </button>
+        </div>
+
+        {/* Stats - KPIs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
           viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12"
         >
           {stats.map((stat, i) => {
             const Icon = stat.icon;
@@ -415,15 +431,15 @@ export default function SubcontractorPortal() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="p-6 rounded-xl glass"
+                className="p-4 lg:p-6 rounded-xl glass"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center">
-                    <Icon className="w-6 h-6 text-reset-green" />
+                <div className="flex flex-col lg:flex-row items-center lg:items-center gap-2 lg:gap-4">
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-reset-green" />
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">{stat.label}</p>
-                    <p className="text-2xl font-bold text-white">{stat.value}</p>
+                  <div className="text-center lg:text-left">
+                    <p className="text-xs lg:text-sm text-gray-400 mb-1">{stat.label}</p>
+                    <p className="text-lg lg:text-2xl font-bold text-white">{stat.value}</p>
                   </div>
                 </div>
               </motion.div>
@@ -509,15 +525,16 @@ export default function SubcontractorPortal() {
           <div className="lg:col-span-2 space-y-8">
             {/* Upcoming Schedule */}
             <motion.div
+              id="schedule-section"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="p-8 rounded-xl glass"
+              className="p-6 lg:p-8 rounded-xl glass border-2 border-reset-green/30"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <Calendar className="w-6 h-6 text-reset-green" />
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-3">
+                <h2 className="text-xl lg:text-2xl font-bold text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 lg:w-6 lg:h-6 text-reset-green" />
                   Upcoming Schedule
                 </h2>
                 <button
@@ -528,15 +545,15 @@ export default function SubcontractorPortal() {
                 </button>
               </div>
 
-              {/* Weekly Schedule Grid */}
+              {/* Weekly Schedule Grid - Responsive */}
               <div className="mb-8">
                 <p className="text-sm font-bold text-gray-400 mb-4">This Week's Schedule</p>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
                   {weeklySchedule.map((schedule, i) => (
                     <div key={i} className="p-3 rounded-lg border border-reset-green/20 hover:border-reset-green/50 transition-colors text-center">
-                      <p className="font-bold text-white mb-1">{schedule.day}</p>
-                      <p className="text-lg text-reset-green font-bold mb-2">{schedule.hours} hrs</p>
-                      <div className="text-xs text-gray-400 space-y-1">
+                      <p className="font-bold text-white text-sm mb-1">{schedule.day}</p>
+                      <p className="text-base lg:text-lg text-reset-green font-bold mb-2">{schedule.hours}h</p>
+                      <div className="text-xs text-gray-400 space-y-0.5 hidden lg:block">
                         {schedule.jobs.map((job, j) => (
                           <div key={j} className="truncate">{job}</div>
                         ))}
@@ -553,14 +570,13 @@ export default function SubcontractorPortal() {
                   {upcomingJobs.length > 0 ? (
                     upcomingJobs.map((job) => (
                       <div key={job.id} className="p-3 border border-reset-green/20 rounded-lg text-sm">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
                           <div className="flex-1">
-                            <p className="font-bold text-white">{job.date}</p>
+                            <p className="font-bold text-white text-sm">{job.date}</p>
                             <p className="text-xs text-gray-400">{job.location} • {job.type}</p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-sm sm:text-right">
                             <p className="text-xs text-reset-green font-bold">{job.duration}</p>
-                            <p className="text-xs text-gray-500">{job.rate}/hr</p>
                           </div>
                         </div>
                       </div>
@@ -577,30 +593,31 @@ export default function SubcontractorPortal() {
             {/* Current Assignment - With Checklist */}
             {currentAssignment ? (
               <motion.div
+                id="current-section"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
-                className="p-8 rounded-xl glass border-2 border-reset-green/50"
+                className="p-6 lg:p-8 rounded-xl glass border-2 border-reset-green/50"
               >
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-                    <CheckCircle className="w-6 h-6 text-reset-green" />
-                    Current Assignment - {currentAssignment.client}
+                  <h2 className="text-xl lg:text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 lg:w-6 lg:h-6 text-reset-green" />
+                    Current Assignment
                   </h2>
-                  <p className="text-sm text-gray-400">{currentAssignment.location} • {currentAssignment.date}</p>
+                  <p className="text-sm text-gray-400">{currentAssignment.client} • {currentAssignment.location}</p>
                 </div>
 
-                {/* Job Details */}
-                <div className="grid grid-cols-3 gap-4 mb-8 p-4 bg-reset-green/10 rounded-lg border border-reset-green/20">
+                {/* Job Details - Simplified for Mobile */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8 p-4 bg-reset-green/10 rounded-lg border border-reset-green/20">
                   <div>
-                    <p className="text-xs text-gray-400 mb-1">Service Type</p>
+                    <p className="text-xs text-gray-400 mb-1">Service</p>
                     <p className="font-bold text-white text-sm">{currentAssignment.type}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Duration</p>
                     <p className="font-bold text-white text-sm">{currentAssignment.duration}</p>
                   </div>
-                  <div>
+                  <div className="col-span-2 lg:col-span-1">
                     <p className="text-xs text-gray-400 mb-1">Rate</p>
                     <p className="font-bold text-reset-green text-sm">{currentAssignment.rate}/hr</p>
                   </div>
@@ -608,13 +625,13 @@ export default function SubcontractorPortal() {
 
                 {/* Daily Checklist */}
                 <div className="mb-8">
-                  <h3 className="text-lg font-bold text-white mb-4">Daily Task Checklist</h3>
-                  <div className="space-y-3">
+                  <h3 className="text-base lg:text-lg font-bold text-white mb-4">Daily Task Checklist</h3>
+                  <div className="space-y-2">
                     {checklist.map((task) => {
                       const uploadState = getTaskUploadState(task.id);
                       return (
                         <div key={task.id} className="border border-reset-green/20 rounded-lg overflow-hidden">
-                          <div className="p-4 bg-black/30">
+                          <div className="p-3 lg:p-4 bg-black/30">
                             <div className="flex items-start gap-3 mb-3">
                               <input
                                 type="checkbox"
@@ -835,14 +852,15 @@ export default function SubcontractorPortal() {
 
             {/* Available Jobs Near You */}
             <motion.div
+              id="jobs-section"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="p-8 rounded-xl glass border border-reset-green/30"
+              className="p-6 lg:p-8 rounded-xl glass border border-reset-green/30"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Available Jobs Near You</h2>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-3">
+                <h2 className="text-xl lg:text-2xl font-bold text-white">Available Jobs Near You</h2>
                 {hasExtendedContracts && (
                   <div className="flex items-center gap-2 px-3 py-1 bg-reset-green/20 text-reset-green rounded-full text-xs font-bold">
                     <AlertCircle size={14} />
@@ -933,13 +951,14 @@ export default function SubcontractorPortal() {
 
             {/* Previous Jobs Completed */}
             <motion.div
+              id="history-section"
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               viewport={{ once: true }}
               className="p-6 rounded-xl glass"
             >
-              <h3 className="text-lg font-bold text-white mb-4">Previous Jobs Completed</h3>
+              <h3 className="text-base lg:text-lg font-bold text-white mb-4">Previous Jobs Completed</h3>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {recentJobs.length > 0 ? (
                   recentJobs.map((job, i) => (
