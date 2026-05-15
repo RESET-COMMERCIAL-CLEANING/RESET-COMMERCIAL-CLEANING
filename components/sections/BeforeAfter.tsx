@@ -108,19 +108,6 @@ function ComparisonSlider({ before, after, title, completed: initialCompleted }:
           <span className="text-white font-bold text-sm">After</span>
         </div>
       </div>
-
-      <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 justify-between sm:justify-start">
-        <h3 className="text-base md:text-lg lg:text-xl font-bold text-white">{title}</h3>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={completed}
-            onChange={(e) => setCompleted(e.target.checked)}
-            className="w-4 h-4 md:w-5 md:h-5 accent-reset-green rounded cursor-pointer"
-          />
-          <span className="text-xs md:text-sm text-gray-300">Complete</span>
-        </label>
-      </div>
     </motion.div>
   );
 }
