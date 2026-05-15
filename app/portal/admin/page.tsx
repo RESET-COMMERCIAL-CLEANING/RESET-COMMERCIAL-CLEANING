@@ -2,8 +2,10 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw } from 'lucide-react';
-import { useState } from 'react';
+import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getCurrentUser, logout, isSuperuser } from '@/lib/auth';
 
 interface SupportTicket {
   id: string;
@@ -23,10 +25,41 @@ interface SupportTicket {
 }
 
 export default function AdminPortal() {
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [showResponseForm, setShowResponseForm] = useState(false);
   const [responseText, setResponseText] = useState('');
   const [filter, setFilter] = useState<'all' | 'open' | 'in-progress' | 'resolved'>('all');
+
+  // Check authentication on mount
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.isSuperuser) {
+      router.push('/portal/superuser-login');
+    } else {
+      setUser(currentUser);
+      setIsAuthorized(true);
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/portal/superuser-login');
+  };
+
+  // Show loading state while checking auth
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-reset-green/30 border-t-reset-green rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Verifying access...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Mock support tickets
   const [tickets, setTickets] = useState<SupportTicket[]>([
@@ -162,14 +195,28 @@ export default function AdminPortal() {
           <div>
             <h1 className="text-5xl font-bold text-white mb-2">Admin Dashboard</h1>
             <p className="text-gray-400">Support Ticket Management System</p>
+            {user && (
+              <p className="text-sm text-reset-green mt-2">
+                Logged in as: <strong>{user.name}</strong> ({user.email})
+              </p>
+            )}
           </div>
 
-          <Link
-            href="/"
-            className="px-6 py-3 bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-bold"
-          >
-            Back to Home
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/"
+              className="px-6 py-3 bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-bold"
+            >
+              Back to Home
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="px-6 py-3 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors font-bold flex items-center gap-2"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          </div>
         </motion.div>
 
         {/* Stats */}
