@@ -38,7 +38,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 leading-tight"
+            className="text-5xl sm:text-6xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-6 leading-tight"
           >
             <span className="block text-white">We don't just</span>
             <span className="block gradient-text">clean. We Reset.</span>
@@ -48,7 +48,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-base md:text-lg lg:text-2xl text-gray-300 mb-8 max-w-xl leading-relaxed"
+            className="text-sm sm:text-base md:text-lg lg:text-2xl text-gray-300 mb-8 max-w-xl leading-relaxed"
           >
             Premium commercial cleaning for businesses across Sydney. Transform your space with our precision and expertise.
           </motion.p>
