@@ -884,10 +884,10 @@ export default function SubcontractorPortal() {
               <div className="space-y-4">
                 {availableJobs.map((job) => (
                   <div key={job.id} className="p-4 border border-reset-green/20 rounded-lg hover:glass-dark transition-all">
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
                       <div className="flex-1">
                         <h3 className="font-bold text-white">{job.location}</h3>
-                        <div className="flex items-center gap-4 text-sm text-gray-400 mt-2">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 mt-2">
                           <span className="flex items-center gap-1">
                             <MapPin size={14} className="text-reset-green" />
                             {job.distance}
@@ -906,14 +906,15 @@ export default function SubcontractorPortal() {
                       <button
                         onClick={() => handleExpressInterest(job)}
                         disabled={interestedJobs.includes(job.id)}
-                        className={`ml-4 px-4 py-2 rounded font-bold text-sm transition-colors whitespace-nowrap flex items-center gap-2 ${
+                        className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded font-bold text-xs sm:text-sm transition-colors flex items-center justify-center sm:justify-start gap-2 ${
                           interestedJobs.includes(job.id)
                             ? 'bg-reset-green/30 text-reset-green cursor-default'
                             : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/40'
                         }`}
                       >
                         <Heart size={16} />
-                        {interestedJobs.includes(job.id) ? 'Interested ✓' : 'Express Interest'}
+                        <span className="sm:hidden">{interestedJobs.includes(job.id) ? 'Interested ✓' : 'Interest'}</span>
+                        <span className="hidden sm:inline">{interestedJobs.includes(job.id) ? 'Interested ✓' : 'Express Interest'}</span>
                       </button>
                     </div>
                   </div>
