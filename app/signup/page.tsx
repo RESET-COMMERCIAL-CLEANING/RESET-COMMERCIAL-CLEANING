@@ -121,6 +121,7 @@ export default function SignupPage() {
 
 function ClientSignupForm() {
   const [step, setStep] = useState(1);
+  const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     companyName: '',
     email: '',
@@ -138,7 +139,7 @@ function ClientSignupForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Account created successfully!');
+    setSubmitted(true);
   };
 
   const questions = [
@@ -194,6 +195,54 @@ function ClientSignupForm() {
   ];
 
   const currentQuestion = questions[step - 1];
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-black pt-32 pb-20 flex items-center justify-center">
+        <div className="container max-w-lg">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            className="text-center py-20"
+          >
+            <div className="w-20 h-20 bg-reset-green/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <motion.div
+                animate={{ scale: [0.8, 1.2, 1] }}
+                transition={{ duration: 0.6 }}
+                className="text-5xl"
+              >
+                ✓
+              </motion.div>
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Account Created!</h2>
+            <p className="text-lg sm:text-xl text-gray-400 mb-4">
+              Welcome to RESET Commercial Cleaning.
+            </p>
+            <p className="text-base sm:text-lg text-gray-400 mb-12">
+              Your account has been successfully created. You can now log in and start exploring our services.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-reset-green text-black font-bold rounded-lg hover:bg-reset-green/80 transition-all"
+              >
+                Sign In Now
+                <ArrowRight size={18} />
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 border-2 border-reset-green text-reset-green font-bold rounded-lg hover:bg-reset-green/10 transition-all"
+              >
+                Back to Home
+                <ArrowRight size={18} />
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black pt-32 pb-20 flex items-center justify-center">
@@ -310,6 +359,7 @@ function ClientSignupForm() {
 
 function SubcontractorSignupForm() {
   const [step, setStep] = useState(1);
+  const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -327,7 +377,7 @@ function SubcontractorSignupForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Application submitted successfully!');
+    setSubmitted(true);
   };
 
   const questions = [
@@ -383,6 +433,54 @@ function SubcontractorSignupForm() {
   ];
 
   const currentQuestion = questions[step - 1];
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-black pt-32 pb-20 flex items-center justify-center">
+        <div className="container max-w-lg">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            className="text-center py-20"
+          >
+            <div className="w-20 h-20 bg-reset-green/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <motion.div
+                animate={{ scale: [0.8, 1.2, 1] }}
+                transition={{ duration: 0.6 }}
+                className="text-5xl"
+              >
+                ✓
+              </motion.div>
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Application Submitted!</h2>
+            <p className="text-lg sm:text-xl text-gray-400 mb-4">
+              Thank you for applying to join RESET.
+            </p>
+            <p className="text-base sm:text-lg text-gray-400 mb-12">
+              We've received your application and will review it shortly. You'll hear from us within 2-3 business days with next steps.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-reset-green text-black font-bold rounded-lg hover:bg-reset-green/80 transition-all"
+              >
+                Sign In
+                <ArrowRight size={18} />
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 border-2 border-reset-green text-reset-green font-bold rounded-lg hover:bg-reset-green/10 transition-all"
+              >
+                Back to Home
+                <ArrowRight size={18} />
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black pt-32 pb-20 flex items-center justify-center">

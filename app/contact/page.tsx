@@ -11,6 +11,7 @@ export default function ContactPage() {
     phone: '',
     message: '',
   });
+  const [submitted, setSubmitted] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -21,7 +22,7 @@ export default function ContactPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Thank you for reaching out! We\'ll be in touch soon.');
+    setSubmitted(true);
     setFormData({ name: '', email: '', phone: '', message: '' });
   };
 
@@ -51,79 +52,110 @@ export default function ContactPage() {
       {/* Contact Info & Form */}
       <section className="w-full py-20">
         <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Contact Information */}
+          {submitted ? (
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
+              className="text-center py-20"
             >
-              <h2 className="text-4xl font-bold text-white mb-12">Contact Information</h2>
-
-              <div className="space-y-8">
-                {/* Phone */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-6 h-6 text-reset-green" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-1">Phone</h3>
-                    <a href="tel:+61292345678" className="text-gray-400 hover:text-reset-green transition-colors">
-                      +61 2 9234 5678
-                    </a>
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-6 h-6 text-reset-green" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-1">Email</h3>
-                    <a href="mailto:info@reset.com.au" className="text-gray-400 hover:text-reset-green transition-colors">
-                      info@reset.com.au
-                    </a>
-                  </div>
-                </div>
-
-                {/* Location */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-6 h-6 text-reset-green" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-1">Location</h3>
-                    <p className="text-gray-400">Sydney, NSW Australia</p>
-                  </div>
-                </div>
-
-                {/* Hours */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-6 h-6 text-reset-green" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-1">Hours</h3>
-                    <p className="text-gray-400">Monday - Friday: 8am - 6pm</p>
-                    <p className="text-gray-400">Saturday: 9am - 2pm</p>
-                  </div>
-                </div>
+              <div className="w-20 h-20 bg-reset-green/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <motion.div
+                  animate={{ scale: [0.8, 1.2, 1] }}
+                  transition={{ duration: 0.6 }}
+                  className="text-5xl"
+                >
+                  ✓
+                </motion.div>
               </div>
+              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Message Sent!</h2>
+              <p className="text-lg sm:text-xl text-gray-400 mb-4">
+                Thank you for reaching out to RESET.
+              </p>
+              <p className="text-base sm:text-lg text-gray-400 mb-12">
+                We've received your message and will get back to you within 24 hours.
+              </p>
+              <button
+                onClick={() => setSubmitted(false)}
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-reset-green text-black font-bold rounded-lg hover:bg-reset-green/80 transition-all"
+              >
+                Send Another Message
+              </button>
             </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              {/* Contact Information */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+              >
+                <h2 className="text-4xl font-bold text-white mb-12">Contact Information</h2>
 
-            {/* Contact Form */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="p-8 rounded-xl glass"
-            >
-              <h2 className="text-4xl font-bold text-white mb-8">Send us a Message</h2>
+                <div className="space-y-8">
+                  {/* Phone */}
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Phone className="w-6 h-6 text-reset-green" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-1">Phone</h3>
+                      <a href="tel:+61292345678" className="text-gray-400 hover:text-reset-green transition-colors">
+                        +61 2 9234 5678
+                      </a>
+                    </div>
+                  </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Email */}
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-6 h-6 text-reset-green" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-1">Email</h3>
+                      <a href="mailto:info@reset.com.au" className="text-gray-400 hover:text-reset-green transition-colors">
+                        info@reset.com.au
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-6 h-6 text-reset-green" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-1">Location</h3>
+                      <p className="text-gray-400">Sydney, NSW Australia</p>
+                    </div>
+                  </div>
+
+                  {/* Hours */}
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-reset-green/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-6 h-6 text-reset-green" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-1">Hours</h3>
+                      <p className="text-gray-400">Monday - Friday: 8am - 6pm</p>
+                      <p className="text-gray-400">Saturday: 9am - 2pm</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Contact Form */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+                className="p-8 rounded-xl glass"
+              >
+                <h2 className="text-4xl font-bold text-white mb-8">Send us a Message</h2>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-sm font-semibold text-white mb-2">Name</label>
                   <input
@@ -186,7 +218,8 @@ export default function ContactPage() {
                 </motion.button>
               </form>
             </motion.div>
-          </div>
+            </div>
+          )}
         </div>
       </section>
 

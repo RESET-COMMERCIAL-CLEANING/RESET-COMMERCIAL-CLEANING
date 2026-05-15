@@ -10,6 +10,9 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showProfilePanel, setShowProfilePanel] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportForm, setSupportForm] = useState({ name: '', email: '', message: '' });
+  const [supportSubmitted, setSupportSubmitted] = useState(false);
   const pathname = usePathname();
 
   const isPortalPage = pathname.includes('/portal/');
@@ -42,6 +45,15 @@ export function Navbar() {
   const handleSaveProfile = () => {
     setProfile(editProfile);
     setShowProfileEdit(false);
+  };
+
+  const handleSupportSubmit = () => {
+    setSupportSubmitted(true);
+    setTimeout(() => {
+      setShowSupportModal(false);
+      setSupportForm({ name: '', email: '', message: '' });
+      setSupportSubmitted(false);
+    }, 2000);
   };
 
   return (
@@ -149,7 +161,7 @@ export function Navbar() {
                     </button>
                     <button
                       onClick={() => {
-                        alert('Connecting to support...');
+                        setShowSupportModal(true);
                         setShowProfilePanel(false);
                       }}
                       className="w-full py-2 text-sm text-white bg-blue-600/20 border border-blue-600/30 rounded hover:bg-blue-600/30 transition-colors font-bold flex items-center justify-center gap-2"
@@ -247,7 +259,7 @@ export function Navbar() {
                     </button>
                     <button
                       onClick={() => {
-                        alert('Connecting to support...');
+                        setShowSupportModal(true);
                         setIsOpen(false);
                       }}
                       className="w-full py-2 text-sm text-white bg-blue-600/20 border border-blue-600/30 rounded hover:bg-blue-600/30 transition-colors font-bold flex items-center justify-center gap-2 mb-2"
@@ -267,6 +279,99 @@ export function Navbar() {
                 </>
               )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Support Modal */}
+      <AnimatePresence>
+        {showSupportModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed top-0 left-0 w-full min-h-screen bg-black/95 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={() => setShowSupportModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-black border-2 border-blue-600/40 rounded-xl max-w-md w-11/12 sm:w-full shadow-2xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {supportSubmitted ? (
+                <div className="p-6 sm:p-8 text-center py-12">
+                  <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <motion.div
+                      animate={{ scale: [0.8, 1.2, 1] }}
+                      transition={{ duration: 0.6 }}
+                      className="text-4xl"
+                    >
+                      ✓
+                    </motion.div>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Message Sent!</h3>
+                  <p className="text-gray-400">Our support team will get back to you shortly.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="p-4 sm:p-6 border-b border-blue-600/20">
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">Contact Support</h2>
+                  </div>
+
+                  <div className="flex-1 p-4 sm:p-6 space-y-4">
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-gray-400 mb-2">Name</label>
+                      <input
+                        type="text"
+                        value={supportForm.name}
+                        onChange={(e) => setSupportForm({ ...supportForm, name: e.target.value })}
+                        placeholder="Your name"
+                        className="w-full px-3 py-2 rounded bg-white/5 border border-blue-600/30 text-white placeholder-gray-500 focus:border-blue-600 focus:outline-none text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-gray-400 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={supportForm.email}
+                        onChange={(e) => setSupportForm({ ...supportForm, email: e.target.value })}
+                        placeholder="your@email.com"
+                        className="w-full px-3 py-2 rounded bg-white/5 border border-blue-600/30 text-white placeholder-gray-500 focus:border-blue-600 focus:outline-none text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs sm:text-sm font-bold text-gray-400 mb-2">Message</label>
+                      <textarea
+                        value={supportForm.message}
+                        onChange={(e) => setSupportForm({ ...supportForm, message: e.target.value })}
+                        placeholder="How can we help?"
+                        rows={3}
+                        className="w-full px-3 py-2 rounded bg-white/5 border border-blue-600/30 text-white placeholder-gray-500 focus:border-blue-600 focus:outline-none text-sm resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 sm:p-6 border-t border-blue-600/20 flex gap-2 sm:gap-3">
+                    <button
+                      onClick={() => setShowSupportModal(false)}
+                      className="flex-1 py-2 text-xs sm:text-sm border border-blue-600 text-blue-600 rounded hover:bg-blue-600/10 transition-colors font-bold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSupportSubmit}
+                      className="flex-1 py-2 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
