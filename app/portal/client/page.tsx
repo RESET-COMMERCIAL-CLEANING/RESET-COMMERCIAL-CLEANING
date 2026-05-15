@@ -227,17 +227,17 @@ export default function ClientPortal() {
         </motion.div>
 
         {/* Stats - Navigation Shortcuts */}
-        <div className="mb-8 flex flex-wrap gap-2 justify-center lg:justify-start">
-          <button onClick={() => document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+        <div className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
+          <button onClick={() => document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
             Jobs in Progress
           </button>
-          <button onClick={() => document.getElementById('completed-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
-            Completed Jobs
+          <button onClick={() => document.getElementById('completed-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
+            Completed
           </button>
-          <button onClick={() => document.getElementById('gallery-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+          <button onClick={() => document.getElementById('gallery-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
             Gallery
           </button>
-          <button onClick={() => document.getElementById('reports-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+          <button onClick={() => document.getElementById('reports-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
             Reports
           </button>
         </div>

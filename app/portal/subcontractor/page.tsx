@@ -399,18 +399,18 @@ export default function SubcontractorPortal() {
         </motion.div>
 
         {/* Navigation Shortcuts */}
-        <div className="mb-8 flex flex-wrap gap-2 justify-center lg:justify-start">
-          <button onClick={() => document.getElementById('schedule-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
+        <div className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
+          <button onClick={() => document.getElementById('schedule-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
             Schedule
           </button>
-          <button onClick={() => document.getElementById('current-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
-            Current Assignment
+          <button onClick={() => document.getElementById('current-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
+            Current
           </button>
-          <button onClick={() => document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
-            Available Jobs
+          <button onClick={() => document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
+            Available
           </button>
-          <button onClick={() => document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold">
-            Job History
+          <button onClick={() => document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 transition-colors font-semibold whitespace-nowrap text-center">
+            History
           </button>
         </div>
 
