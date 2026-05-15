@@ -111,7 +111,7 @@ export function Navbar() {
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 mt-2 w-80 bg-gray-950 border-2 border-reset-green/50 rounded-lg shadow-2xl z-50 p-6"
+                  className="absolute right-0 md:right-0 left-auto md:left-auto top-full mt-2 w-72 md:w-80 bg-gray-950 border-2 border-reset-green/50 rounded-lg shadow-2xl z-50 p-6"
                   style={{
                     backdropFilter: 'blur(10px)',
                     backgroundColor: 'rgba(3, 7, 18, 0.95)',
@@ -164,18 +164,20 @@ export function Navbar() {
           </div>
         )}
 
-        {/* Mobile/Tablet Menu Button */}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-reset-green p-2"
-        >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        {/* Mobile/Tablet Menu Button - Only show on non-portal pages */}
+        {!isPortalPage && (
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden text-reset-green p-2"
+          >
+            {isOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        )}
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Only show on non-portal pages */}
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && !isPortalPage && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
