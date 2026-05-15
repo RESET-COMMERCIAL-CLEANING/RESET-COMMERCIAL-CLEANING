@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="512" height="512">
+  <title>RESET Commercial Cleaning — Icon</title>
+  <desc>Recycle ring with broom and dust particles, dark theme</desc>
+  <defs>
+    <linearGradient id="ringTop" x1="20" y1="20" x2="100" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f0f0f4"/>
+      <stop offset="100%" stop-color="#787880"/>
+    </linearGradient>
+    <linearGradient id="ringGreen" x1="100" y1="100" x2="20" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#55b07a"/>
+      <stop offset="100%" stop-color="#1f5a3a"/>
+    </linearGradient>
+    <linearGradient id="handle" x1="50" y1="32" x2="74" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#e8e8ec"/>
+      <stop offset="100%" stop-color="#787880"/>
+    </linearGradient>
+    <linearGradient id="bristles" x1="60" y1="62" x2="60" y2="86" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d8d8dc"/>
+      <stop offset="100%" stop-color="#888890"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M60 14 A46 46 0 0 1 106 60 L113 60 L96 76 L96 60 A36 36 0 0 0 60 24 Z" fill="url(#ringTop)"/>
+  <path d="M60 106 A46 46 0 0 1 14 60 L7 60 L24 44 L24 60 A36 36 0 0 0 60 96 Z" fill="url(#ringGreen)"/>
+
+  <g transform="rotate(-22 60 60)">
+    <rect x="58" y="32" width="4" height="34" rx="2" fill="url(#handle)"/>
+    <circle cx="60" cy="32" r="2.5" fill="#f0f0f4"/>
+    <rect x="48" y="64" width="24" height="4" rx="1.5" fill="#2a2a30"/>
+    <path d="M48 68 L72 68 L66 86 L54 86 Z" fill="url(#bristles)"/>
+    <line x1="52" y1="70" x2="55" y2="85" stroke="#404048" stroke-width="0.7" opacity="0.7"/>
+    <line x1="56" y1="70" x2="58" y2="85" stroke="#404048" stroke-width="0.7" opacity="0.7"/>
+    <line x1="60" y1="70" x2="60" y2="85" stroke="#404048" stroke-width="0.7" opacity="0.7"/>
+    <line x1="64" y1="70" x2="62" y2="85" stroke="#404048" stroke-width="0.7" opacity="0.7"/>
+    <line x1="68" y1="70" x2="65" y2="85" stroke="#404048" stroke-width="0.7" opacity="0.7"/>
+  </g>
+
+  <circle cx="80" cy="92" r="1.6" fill="#a8a8b0"/>
+  <circle cx="86" cy="96" r="1.2" fill="#888890" opacity="0.8"/>
+  <circle cx="92" cy="93" r="1" fill="#a8a8b0" opacity="0.65"/>
+  <circle cx="97" cy="97" r="0.8" fill="#787880" opacity="0.5"/>
+</svg>

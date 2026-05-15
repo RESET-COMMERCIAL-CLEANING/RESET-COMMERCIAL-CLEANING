@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <title>RESET — Favicon</title>
+  <desc>Recycle ring with broom, simplified for small sizes</desc>
+
+  <path d="M60 14 A46 46 0 0 1 106 60 L113 60 L96 76 L96 60 A36 36 0 0 0 60 24 Z" fill="#b8b8c0"/>
+  <path d="M60 106 A46 46 0 0 1 14 60 L7 60 L24 44 L24 60 A36 36 0 0 0 60 96 Z" fill="#3a9e68"/>
+
+  <g transform="rotate(-22 60 60)">
+    <rect x="56" y="34" width="8" height="34" rx="2" fill="#e0e0e4"/>
+    <path d="M46 66 L74 66 L68 90 L52 90 Z" fill="#c8c8d0"/>
+  </g>
+</svg>

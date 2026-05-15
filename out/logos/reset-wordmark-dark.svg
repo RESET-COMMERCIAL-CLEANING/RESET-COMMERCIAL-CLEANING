@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 180" width="540" height="180">
+  <title>RESET Commercial Cleaning — Wordmark</title>
+  <desc>Wordmark with decorative first E and regular second E</desc>
+
+  <text x="0" y="100"
+        font-family="Manrope, 'Helvetica Neue', Arial, sans-serif"
+        font-size="100" font-weight="600" letter-spacing="0"
+        fill="#f4f4f6">R</text>
+
+  <g transform="translate(82, 30)">
+    <rect x="0" y="0"  width="48" height="13" rx="2.5" fill="#3a9e68"/>
+    <rect x="0" y="29" width="38" height="13" rx="2.5" fill="#3a9e68"/>
+    <rect x="0" y="58" width="48" height="13" rx="2.5" fill="#3a9e68"/>
+  </g>
+
+  <text x="156" y="100"
+        font-family="Manrope, 'Helvetica Neue', Arial, sans-serif"
+        font-size="100" font-weight="600" letter-spacing="0"
+        fill="#f4f4f6">S</text>
+
+  <text x="238" y="100"
+        font-family="Manrope, 'Helvetica Neue', Arial, sans-serif"
+        font-size="100" font-weight="600" letter-spacing="0"
+        fill="#f4f4f6">E</text>
+
+  <text x="312" y="100"
+        font-family="Manrope, 'Helvetica Neue', Arial, sans-serif"
+        font-size="100" font-weight="600" letter-spacing="0"
+        fill="#f4f4f6">T</text>
+
+  <text x="0" y="140"
+        font-family="Inter, 'Helvetica Neue', Arial, sans-serif"
+        font-size="18" font-weight="400"
+        textLength="372" lengthAdjust="spacing"
+        fill="#f4f4f6">COMMERCIAL CLEANING</text>
+</svg>
