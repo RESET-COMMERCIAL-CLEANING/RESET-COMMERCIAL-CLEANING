@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import RootLayoutClient from '@/components/RootLayoutClient';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -20,11 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="bg-black text-white antialiased overflow-x-hidden">
-        <Navbar />
-        <main className="relative">
+        <RootLayoutClient>
           {children}
-        </main>
-        <Footer />
+        </RootLayoutClient>
       </body>
     </html>
   );

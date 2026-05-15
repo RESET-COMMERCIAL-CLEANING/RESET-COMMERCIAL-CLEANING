@@ -3,7 +3,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { MapPin, DollarSign, Camera, Clock, LogOut, User, TrendingUp, MessageSquare, CheckCircle, Calendar, X, Heart, AlertCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { logout, getUserProfile } from '@/lib/auth';
 
 interface Notification {
   id: string;
@@ -49,8 +51,33 @@ interface TaskUploadState {
 }
 
 export default function SubcontractorPortal() {
+  const router = useRouter();
   const [selectedContract, setSelectedContract] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Check authentication
+  useEffect(() => {
+    const userJson = localStorage.getItem('currentUser');
+    if (!userJson) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userJson);
+      if (user.isSuperuser || user.role !== 'subcontractor') {
+        router.push('/login');
+      }
+    } catch {
+      router.push('/login');
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
   const [taskUploadStates, setTaskUploadStates] = useState<{ [key: string]: TaskUploadState }>({});
   const [currentAssignment, setCurrentAssignment] = useState<any>({
     id: 1,

@@ -1,5 +1,7 @@
-// Simple auth system for superuser access
+// Simple auth system for superuser and regular user access
 // In production, integrate with your backend authentication system (JWT, OAuth, etc.)
+
+import { getAllUsers, UserProfile } from './userManagement';
 
 export interface User {
   id: string;
@@ -72,6 +74,8 @@ export const loginSuperuser = (email: string, password: string): boolean => {
 export const logout = (): void => {
   localStorage.removeItem('currentUser');
   localStorage.removeItem('isAuthenticated');
+  localStorage.removeItem('userProfile');
+  localStorage.removeItem('supportMember');
 };
 
 // Get all superusers (for admin management - future feature)
@@ -85,4 +89,104 @@ export const addSuperuser = (user: User): void => {
     throw new Error('Only superusers can add other superusers');
   }
   SUPERUSERS.push(user);
+};
+
+// Login regular user (client or subcontractor)
+// Validates email and temporary password
+export const loginUser = (email: string, password: string): { success: boolean; user?: UserProfile; error?: string } => {
+  try {
+    const users = getAllUsers();
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+    if (!user) {
+      return { success: false, error: 'Email not found. Please check your email address.' };
+    }
+
+    // Check if password matches the temporary password
+    if (user.tempPassword !== password) {
+      return { success: false, error: 'Invalid password. Please check your credentials.' };
+    }
+
+    // Check if user is pending (not yet activated)
+    if (user.status === 'pending') {
+      return { success: false, error: 'Your account is pending activation. Please contact support.' };
+    }
+
+    // Check if user is inactive
+    if (user.status === 'inactive') {
+      return { success: false, error: 'Your account has been deactivated. Please contact support.' };
+    }
+
+    // Store user session
+    const sessionUser: User = {
+      id: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      role: user.role,
+      isSuperuser: false,
+    };
+
+    localStorage.setItem('currentUser', JSON.stringify(sessionUser));
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userProfile', JSON.stringify(user));
+
+    return { success: true, user };
+  } catch (error) {
+    return { success: false, error: 'An error occurred during login. Please try again.' };
+  }
+};
+
+// Get current regular user from localStorage
+export const getCurrentRegularUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+
+  const userJson = localStorage.getItem('currentUser');
+  if (!userJson) return null;
+
+  try {
+    const user = JSON.parse(userJson);
+    // Check if it's a regular user (not a superuser)
+    if (user.isSuperuser === false) {
+      return user;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+// Get user profile details
+export const getUserProfile = (): UserProfile | null => {
+  if (typeof window === 'undefined') return null;
+
+  const profileJson = localStorage.getItem('userProfile');
+  if (!profileJson) return null;
+
+  try {
+    return JSON.parse(profileJson);
+  } catch {
+    return null;
+  }
+};
+
+// Get superuser details
+export const getSuperuserDetails = (email: string): User | null => {
+  const superuser = SUPERUSERS.find(u => u.email === email);
+  return superuser || null;
+};
+
+// Update superuser info
+export const updateSuperuser = (id: string, updates: Partial<User>): User | null => {
+  const index = SUPERUSERS.findIndex(u => u.id === id);
+  if (index === -1) return null;
+
+  SUPERUSERS[index] = { ...SUPERUSERS[index], ...updates };
+
+  // Update localStorage if it's the current user
+  const currentUser = getCurrentUser();
+  if (currentUser && currentUser.id === id) {
+    localStorage.setItem('currentUser', JSON.stringify(SUPERUSERS[index]));
+  }
+
+  return SUPERUSERS[index];
 };

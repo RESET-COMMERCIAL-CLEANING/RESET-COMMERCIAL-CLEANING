@@ -3,8 +3,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { Calendar, Bell, Download, MessageSquare, LogOut, User, Phone, Mail, TrendingUp, CheckCircle, X, Star, MapPin, Clock, Camera } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { generateMonthlyReportPDF } from '@/lib/pdfGenerator';
+import { logout, getUserProfile } from '@/lib/auth';
 
 interface Notification {
   id: string;
@@ -52,18 +54,40 @@ interface BeforeAfterEntry {
 }
 
 export default function ClientPortal() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
+
+  // Get user profile from localStorage or use default
+  const userProfile = getUserProfile();
   const [profile, setProfile] = useState<Profile>({
-    name: 'Sarah Johnson',
+    name: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'Sarah Johnson',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-    company: 'Tech Startup HQ',
-    email: 'admin@techstartuphq.com',
-    phone: '+61 2 9234 5678',
-    address: '123 Tech Street, Sydney NSW 2000',
-    industry: 'Technology',
-    squareFeet: '5,000 sqft',
+    company: userProfile?.company || 'Tech Startup HQ',
+    email: userProfile?.email || 'admin@techstartuphq.com',
+    phone: userProfile?.phone || '+61 2 9234 5678',
+    address: userProfile?.address || '123 Tech Street, Sydney NSW 2000',
+    industry: userProfile?.industry || 'Technology',
+    squareFeet: userProfile?.squareFeet || '5,000 sqft',
   });
+
+  // Check authentication
+  useEffect(() => {
+    const userJson = localStorage.getItem('currentUser');
+    if (!userJson) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userJson);
+      if (user.isSuperuser || user.role !== 'client') {
+        router.push('/login');
+      }
+    } catch {
+      router.push('/login');
+    }
+  }, [router]);
 
   const [editProfile, setEditProfile] = useState<Profile>(profile);
   const [selectedPhotoDate, setSelectedPhotoDate] = useState<string | null>(null);
@@ -74,6 +98,11 @@ export default function ClientPortal() {
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
     }, 4000);
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
   };
 
   // Mock ongoing jobs with comprehensive data

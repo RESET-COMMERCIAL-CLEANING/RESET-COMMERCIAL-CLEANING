@@ -2,10 +2,11 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowRight, Building2, Users } from 'lucide-react';
+import { ArrowRight, Building2, Users, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Toast } from '@/components/Toast';
+import { loginUser } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,8 +15,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [email_error, setEmailError] = useState('');
+  const [password_error, setPasswordError] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleRoleSelect = (selected: 'client' | 'subcontractor') => {
     setRole(selected);
@@ -32,20 +35,31 @@ export default function LoginPage() {
     setStep('password');
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password) {
+      setPasswordError('Please enter your password');
       return;
     }
 
-    setStep('success');
-    setToastMessage(`Welcome back! Signed in as ${role === 'client' ? 'business' : 'service provider'}`);
-    setShowToast(true);
+    setIsLoading(true);
+    setPasswordError('');
 
-    setTimeout(() => {
-      const portalUrl = role === 'client' ? '/portal/client' : '/portal/subcontractor';
-      router.push(portalUrl);
-    }, 1500);
+    const result = loginUser(email, password);
+
+    if (result.success && result.user) {
+      setStep('success');
+      setToastMessage(`Welcome! Signed in as ${result.user.firstName} ${result.user.lastName}`);
+      setShowToast(true);
+
+      setTimeout(() => {
+        const portalUrl = result.user?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
+        router.push(portalUrl);
+      }, 1500);
+    } else {
+      setPasswordError(result.error || 'Login failed. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -182,27 +196,56 @@ export default function LoginPage() {
                 <h2 className="text-2xl font-bold text-white mb-2">Enter your password</h2>
                 <p className="text-gray-400 mb-6 text-sm">{email}</p>
 
+                {password_error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg flex gap-2"
+                  >
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-400 text-sm">{password_error}</p>
+                  </motion.div>
+                )}
+
                 <div>
                   <input
                     type="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordError('');
+                    }}
                     placeholder="••••••••"
                     className="w-full px-5 py-4 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all text-lg"
                     autoFocus
+                    disabled={isLoading}
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full mt-6 py-4 bg-reset-green text-black font-bold rounded-lg hover:bg-opacity-80 transition-all glow-green-hover"
+                  disabled={isLoading}
+                  className="w-full mt-6 py-4 bg-reset-green text-black font-bold rounded-lg hover:bg-opacity-80 transition-all glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Sign In <ArrowRight className="inline ml-2" size={18} />
+                  {isLoading ? (
+                    <>
+                      <span className="animate-spin inline-block mr-2">⏳</span>
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      Sign In <ArrowRight className="inline ml-2" size={18} />
+                    </>
+                  )}
                 </button>
 
-                <Link href="#" className="block text-center text-reset-green text-sm font-bold mt-4 hover:underline">
-                  Forgot password?
-                </Link>
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="block text-center text-reset-green text-sm font-bold mt-4 hover:underline w-full"
+                >
+                  ← Back
+                </button>
               </form>
             )}
 

@@ -2,9 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowRight, AlertCircle } from 'lucide-react';
-import { loginSuperuser } from '@/lib/auth';
+import { loginSuperuser, logout } from '@/lib/auth';
 
 export default function SuperuserLoginPage() {
   const router = useRouter();
@@ -12,6 +12,11 @@ export default function SuperuserLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Clear any existing sessions when visiting superuser login page
+  useEffect(() => {
+    logout();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +56,7 @@ export default function SuperuserLoginPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="p-8 rounded-xl glass border border-reset-green/30"
+            className="p-8 rounded-xl glass border border-reset-green/20"
           >
             <div className="mb-6 pb-6 border-b border-reset-green/20">
               <p className="text-gray-400 text-sm">

@@ -2,9 +2,10 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { useState } from 'react';
-import { Menu, X, LogOut, User, Phone, MessageSquare } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { Menu, X, LogOut, User, Phone, MessageSquare, Edit } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { logout } from '@/lib/auth';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,10 +14,59 @@ export function Navbar() {
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [supportForm, setSupportForm] = useState({ name: '', email: '', message: '' });
   const [supportSubmitted, setSupportSubmitted] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<any>(null);
   const pathname = usePathname();
+  const router = useRouter();
+  const profilePanelRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
 
   const isPortalPage = pathname.includes('/portal/');
-  const isAuthenticated = isPortalPage;
+  const isAdminPortal = pathname.includes('/portal/admin') || pathname.includes('/portal/superuser-login');
+  const isSupportPortal = pathname.includes('/portal/support-member');
+  const isSupportLogin = pathname.includes('/portal/support-login');
+  const isAuthenticated = isPortalPage && loggedInUser;
+
+  // Get logged-in user from localStorage
+  useEffect(() => {
+    const currentUser = localStorage.getItem('currentUser');
+    const userProfile = localStorage.getItem('userProfile');
+    const supportMember = localStorage.getItem('supportMember');
+
+    if (currentUser) {
+      setLoggedInUser(JSON.parse(currentUser));
+    } else if (userProfile) {
+      const profile = JSON.parse(userProfile);
+      setLoggedInUser({
+        name: `${profile.firstName} ${profile.lastName}`,
+        email: profile.email,
+        company: profile.company || 'N/A',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
+      });
+    } else if (supportMember) {
+      setLoggedInUser(JSON.parse(supportMember));
+    }
+  }, [pathname]);
+
+  // Click-outside detection for profile panel
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        profilePanelRef.current &&
+        profileButtonRef.current &&
+        !profilePanelRef.current.contains(event.target as Node) &&
+        !profileButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowProfilePanel(false);
+      }
+    };
+
+    if (showProfilePanel) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showProfilePanel]);
 
   const [profile, setProfile] = useState({
     name: 'Sarah Johnson',
@@ -65,7 +115,10 @@ export function Navbar() {
     >
       <div className="container flex items-center justify-between h-20">
         {/* Logo */}
-        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+        <Link
+          href={isSupportPortal ? "/portal/support-member" : "/"}
+          className="flex items-center hover:opacity-80 transition-opacity"
+        >
           <img
             src="/RESET-COMMERCIAL-CLEANING/logos/reset-logo-horizontal-dark.svg"
             alt="RESET Commercial Cleaning"
@@ -74,7 +127,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Navigation - Hide on portal pages */}
-        {!isPortalPage && (
+        {!isPortalPage && !isSupportLogin && (
           <div className="hidden lg:flex items-center gap-8">
             {navItems.map((item) => (
               <Link
@@ -111,21 +164,23 @@ export function Navbar() {
         ) : (
           <div className="flex items-center gap-2 relative">
             <button
+              ref={profileButtonRef}
               onClick={() => setShowProfilePanel(!showProfilePanel)}
               className="px-2 md:px-4 py-2 rounded-lg bg-reset-green/20 hover:bg-reset-green/30 transition-all duration-300 flex items-center gap-2 text-white font-semibold"
             >
               <img
-                src={profile.avatar}
-                alt={profile.name}
+                src={loggedInUser?.avatar || profile.avatar}
+                alt={loggedInUser?.name || profile.name}
                 className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover border border-reset-green"
               />
-              <span className="hidden md:inline text-sm">{profile.name}</span>
+              <span className="hidden md:inline text-sm">{loggedInUser?.name || profile.name}</span>
             </button>
 
             {/* Profile Panel */}
             <AnimatePresence>
               {showProfilePanel && (
                 <motion.div
+                  ref={profilePanelRef}
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -135,49 +190,133 @@ export function Navbar() {
                     backgroundColor: 'rgba(3, 7, 18, 0.95)',
                   }}
                 >
-                  {/* Profile Header */}
-                  <div className="text-center mb-6 pb-6 border-b border-reset-green/20">
-                    <img
-                      src={profile.avatar}
-                      alt={profile.name}
-                      className="w-16 h-16 rounded-lg object-cover border-2 border-reset-green mx-auto mb-3"
-                    />
-                    <h3 className="text-lg font-bold text-white">{profile.name}</h3>
-                    <p className="text-xs text-gray-400 mt-1">{profile.company}</p>
-                    <p className="text-xs text-gray-500 mt-2">{profile.email}</p>
-                  </div>
+                  {!showProfileEdit ? (
+                    <>
+                      {/* Profile Header */}
+                      <div className="text-center mb-6 pb-6 border-b border-reset-green/20">
+                        <img
+                          src={loggedInUser?.avatar || profile.avatar}
+                          alt={loggedInUser?.name || profile.name}
+                          className="w-16 h-16 rounded-lg object-cover border-2 border-reset-green mx-auto mb-3"
+                        />
+                        <h3 className="text-lg font-bold text-white">{loggedInUser?.name || profile.name}</h3>
+                        <p className="text-xs text-gray-400 mt-1">{loggedInUser?.role || loggedInUser?.company || profile.company}</p>
+                        <p className="text-xs text-gray-500 mt-2">{loggedInUser?.email || profile.email}</p>
+                      </div>
 
-                  {/* Action Buttons */}
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => {
-                        setEditProfile(profile);
-                        setShowProfileEdit(true);
-                        setShowProfilePanel(false);
-                      }}
-                      className="w-full py-2 text-sm text-white bg-reset-green/10 border border-reset-green rounded hover:bg-reset-green/20 transition-colors font-bold"
-                    >
-                      Edit Profile
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowSupportModal(true);
-                        setShowProfilePanel(false);
-                      }}
-                      className="w-full py-2 text-sm text-white bg-blue-600/20 border border-blue-600/30 rounded hover:bg-blue-600/30 transition-colors font-bold flex items-center justify-center gap-2"
-                    >
-                      <MessageSquare size={14} />
-                      Contact Support
-                    </button>
-                    <Link
-                      href="/"
-                      onClick={() => setShowProfilePanel(false)}
-                      className="w-full py-2 text-sm text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors font-bold flex items-center justify-center gap-2 text-center"
-                    >
-                      <LogOut size={14} />
-                      Logout
-                    </Link>
-                  </div>
+                      {/* Action Buttons */}
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => {
+                            setEditProfile(loggedInUser || profile);
+                          }}
+                          className="w-full py-2 text-sm text-white bg-reset-green/10 border border-reset-green rounded hover:bg-reset-green/20 transition-colors font-bold flex items-center justify-center gap-2"
+                        >
+                          <Edit size={14} />
+                          Edit Profile
+                        </button>
+                        {!isAdminPortal && !isSupportPortal && (
+                          <button
+                            onClick={() => {
+                              setShowSupportModal(true);
+                              setShowProfilePanel(false);
+                            }}
+                            className="w-full py-2 text-sm text-white bg-blue-600/20 border border-blue-600/30 rounded hover:bg-blue-600/30 transition-colors font-bold flex items-center justify-center gap-2"
+                          >
+                            <MessageSquare size={14} />
+                            Contact Support
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            logout();
+                            setShowProfilePanel(false);
+                            if (isAdminPortal) {
+                              router.push('/portal/superuser-login');
+                            } else if (isSupportPortal) {
+                              router.push('/portal/support-login');
+                            } else {
+                              router.push('/');
+                            }
+                          }}
+                          className="w-full py-2 text-sm text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors font-bold flex items-center justify-center gap-2 text-center"
+                        >
+                          <LogOut size={14} />
+                          Logout
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Edit Profile Form */}
+                      <h3 className="text-lg font-bold text-white mb-6">Edit Profile</h3>
+                      <div className="space-y-3 max-h-80 overflow-y-auto">
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1 font-bold">Name</label>
+                          <input
+                            type="text"
+                            value={editProfile.name || ''}
+                            onChange={(e) => setEditProfile({ ...editProfile, name: e.target.value })}
+                            className="w-full px-3 py-2 bg-white/5 border border-reset-green/30 rounded text-white text-sm focus:border-reset-green outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1 font-bold">Email</label>
+                          <input
+                            type="email"
+                            value={editProfile.email || ''}
+                            onChange={(e) => setEditProfile({ ...editProfile, email: e.target.value })}
+                            className="w-full px-3 py-2 bg-white/5 border border-reset-green/30 rounded text-white text-sm focus:border-reset-green outline-none"
+                          />
+                        </div>
+                        {editProfile.phone && (
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1 font-bold">Phone</label>
+                            <input
+                              type="tel"
+                              value={editProfile.phone}
+                              onChange={(e) => setEditProfile({ ...editProfile, phone: e.target.value })}
+                              className="w-full px-3 py-2 bg-white/5 border border-reset-green/30 rounded text-white text-sm focus:border-reset-green outline-none"
+                            />
+                          </div>
+                        )}
+                        {editProfile.company && (
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1 font-bold">Company</label>
+                            <input
+                              type="text"
+                              value={editProfile.company}
+                              onChange={(e) => setEditProfile({ ...editProfile, company: e.target.value })}
+                              className="w-full px-3 py-2 bg-white/5 border border-reset-green/30 rounded text-white text-sm focus:border-reset-green outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Edit Form Actions */}
+                      <div className="flex gap-2 mt-6">
+                        <button
+                          onClick={() => {
+                            setShowProfileEdit(false);
+                            setEditProfile(profile);
+                          }}
+                          className="flex-1 py-2 text-sm text-reset-green border border-reset-green rounded hover:bg-reset-green/10 transition-colors font-bold"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            setProfile(editProfile);
+                            setShowProfileEdit(false);
+                            setLoggedInUser(editProfile);
+                          }}
+                          className="flex-1 py-2 text-sm text-black bg-reset-green rounded hover:bg-reset-green/80 transition-colors font-bold"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
