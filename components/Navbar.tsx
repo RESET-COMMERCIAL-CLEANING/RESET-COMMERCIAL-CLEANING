@@ -285,19 +285,22 @@ export function Navbar() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-black border-2 border-reset-green/40 rounded-xl p-6 sm:p-8 max-w-md w-11/12 sm:w-full shadow-2xl"
+              className="bg-black border-2 border-reset-green/40 rounded-xl max-w-md w-11/12 sm:w-full shadow-2xl flex flex-col max-h-[90vh]"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-2xl font-bold text-white mb-6">Edit Profile</h2>
-              <div className="space-y-4">
+              <div className="p-4 sm:p-6 border-b border-reset-green/20">
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Edit Profile</h2>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
                 {/* Profile Picture Upload */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-400 mb-2">Profile Picture</label>
-                  <div className="flex flex-col gap-3">
+                  <label className="block text-xs sm:text-sm font-bold text-gray-400 mb-2">Profile Picture</label>
+                  <div className="flex flex-col gap-2">
                     <img
                       src={editProfile.avatar}
                       alt="Profile preview"
-                      className="w-20 h-20 rounded-lg object-cover border-2 border-reset-green"
+                      className="w-16 h-16 rounded-lg object-cover border-2 border-reset-green"
                     />
                     <input
                       type="file"
@@ -313,41 +316,42 @@ export function Navbar() {
                           reader.readAsDataURL(file);
                         }
                       }}
-                      className="w-full px-4 py-2 rounded bg-white/5 border border-reset-green/30 text-gray-300 text-sm focus:border-reset-green focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-reset-green file:text-black file:font-bold file:cursor-pointer hover:file:bg-reset-green/80"
+                      className="w-full px-3 py-1.5 rounded bg-white/5 border border-reset-green/30 text-gray-300 text-xs focus:border-reset-green focus:outline-none file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-reset-green file:text-black file:font-bold file:cursor-pointer file:text-xs hover:file:bg-reset-green/80"
                     />
                   </div>
                 </div>
 
                 {/* Other Profile Fields */}
                 {Object.entries(editProfile).map(([key, value]) => {
-                  if (key === 'avatar') return null; // Skip avatar as we handle it above
+                  if (key === 'avatar') return null;
                   return (
                     <div key={key}>
-                      <label className="block text-sm font-bold text-gray-400 mb-2 capitalize">
+                      <label className="block text-xs sm:text-sm font-bold text-gray-400 mb-1 capitalize">
                         {key.replace(/([A-Z])/g, ' $1').trim()}
                       </label>
                       <input
                         type="text"
                         value={value as string}
                         onChange={(e) => setEditProfile({ ...editProfile, [key]: e.target.value })}
-                        className="w-full px-4 py-2 rounded bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                        className="w-full px-3 py-1.5 rounded bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none text-xs sm:text-sm"
                       />
                     </div>
                   );
                 })}
               </div>
-              <div className="flex gap-3 mt-8">
+
+              <div className="p-4 sm:p-6 border-t border-reset-green/20 flex gap-2 sm:gap-3">
                 <button
                   onClick={() => setShowProfileEdit(false)}
-                  className="flex-1 py-2 border border-reset-green text-reset-green rounded hover:bg-reset-green/10 transition-colors font-bold"
+                  className="flex-1 py-2 text-xs sm:text-sm border border-reset-green text-reset-green rounded hover:bg-reset-green/10 transition-colors font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveProfile}
-                  className="flex-1 py-2 bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-bold"
+                  className="flex-1 py-2 text-xs sm:text-sm bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-bold"
                 >
-                  Save Changes
+                  Save
                 </button>
               </div>
             </motion.div>
