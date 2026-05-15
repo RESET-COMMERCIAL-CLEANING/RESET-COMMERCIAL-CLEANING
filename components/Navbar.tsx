@@ -16,6 +16,8 @@ export function Navbar() {
   const isAuthenticated = isPortalPage;
 
   const [profile, setProfile] = useState({
+    name: 'Sarah Johnson',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
     company: 'Tech Startup HQ',
     email: 'admin@techstartuphq.com',
     phone: '+61 2 9234 5678',
@@ -98,10 +100,14 @@ export function Navbar() {
           <div className="flex items-center gap-2 relative">
             <button
               onClick={() => setShowProfilePanel(!showProfilePanel)}
-              className="p-2 md:px-4 md:py-2 rounded-lg bg-reset-green/20 text-reset-green font-semibold hover:bg-reset-green/30 transition-all duration-300 flex items-center gap-2"
+              className="px-2 md:px-4 py-2 rounded-lg bg-reset-green/20 hover:bg-reset-green/30 transition-all duration-300 flex items-center gap-2 text-white font-semibold"
             >
-              <User size={16} />
-              <span className="hidden md:inline">Profile</span>
+              <img
+                src={profile.avatar}
+                alt={profile.name}
+                className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover border border-reset-green"
+              />
+              <span className="hidden md:inline text-sm">{profile.name}</span>
             </button>
 
             {/* Profile Panel */}
@@ -119,11 +125,13 @@ export function Navbar() {
                 >
                   {/* Profile Header */}
                   <div className="text-center mb-6 pb-6 border-b border-reset-green/20">
-                    <div className="w-16 h-16 bg-reset-green/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-                      <User className="w-8 h-8 text-reset-green" />
-                    </div>
-                    <h3 className="text-lg font-bold text-white">{profile.company}</h3>
-                    <p className="text-xs text-gray-400 mt-1">{profile.industry} • {profile.squareFeet}</p>
+                    <img
+                      src={profile.avatar}
+                      alt={profile.name}
+                      className="w-16 h-16 rounded-lg object-cover border-2 border-reset-green mx-auto mb-3"
+                    />
+                    <h3 className="text-lg font-bold text-white">{profile.name}</h3>
+                    <p className="text-xs text-gray-400 mt-1">{profile.company}</p>
                     <p className="text-xs text-gray-500 mt-2">{profile.email}</p>
                   </div>
 
