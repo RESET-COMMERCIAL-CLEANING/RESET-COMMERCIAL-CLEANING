@@ -262,14 +262,14 @@ export function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 pt-20"
+            className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={() => setShowProfileEdit(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-black border border-reset-green/20 rounded-xl p-8 max-w-md w-full mx-4"
+              className="bg-black border border-reset-green/30 rounded-xl p-6 sm:p-8 max-w-md w-full mx-4 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="text-2xl font-bold text-white mb-6">Edit Profile</h2>
