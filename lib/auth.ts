@@ -84,7 +84,7 @@ export const getAllSuperusers = (): User[] => {
 };
 
 // Add new superuser (for admin to manage - future feature)
-export const addSuperuser = (user: User): void => {
+export const addSuperuser = (user: Omit<User, 'role'> & { role: 'superuser' | 'admin' }): void => {
   if (!isSuperuser()) {
     throw new Error('Only superusers can add other superusers');
   }
@@ -176,11 +176,11 @@ export const getSuperuserDetails = (email: string): User | null => {
 };
 
 // Update superuser info
-export const updateSuperuser = (id: string, updates: Partial<User>): User | null => {
+export const updateSuperuser = (id: string, updates: Partial<Omit<User, 'role'> & { role?: 'superuser' | 'admin' }>): User | null => {
   const index = SUPERUSERS.findIndex(u => u.id === id);
   if (index === -1) return null;
 
-  SUPERUSERS[index] = { ...SUPERUSERS[index], ...updates };
+  SUPERUSERS[index] = { ...SUPERUSERS[index], ...(updates as any) };
 
   // Update localStorage if it's the current user
   const currentUser = getCurrentUser();

@@ -37,7 +37,7 @@ export default function SupportTeamManagement() {
     username: '',
     email: '',
     password: '',
-    role: 'support' as const,
+    role: 'support' as 'support' | 'senior-support' | 'support-lead',
     phone: '',
     bio: '',
   });
