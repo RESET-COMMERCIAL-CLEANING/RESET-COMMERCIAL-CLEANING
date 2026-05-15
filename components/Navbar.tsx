@@ -180,7 +180,7 @@ export function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden glass-dark border-t border-reset-green/20"
+            className="md:hidden glass-dark border-t border-reset-green/20 max-h-96 overflow-y-auto"
           >
             <div className="container py-4 flex flex-col gap-4">
               {!isPortalPage && navItems.map((item) => (
@@ -268,14 +268,14 @@ export function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto"
+            className="fixed top-0 left-0 w-full min-h-screen bg-black/95 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={() => setShowProfileEdit(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-black border border-reset-green/30 rounded-xl p-6 sm:p-8 max-w-md w-full mx-4 shadow-2xl my-auto"
+              className="bg-black border-2 border-reset-green/40 rounded-xl p-6 sm:p-8 max-w-md w-11/12 sm:w-full shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="text-2xl font-bold text-white mb-6">Edit Profile</h2>
