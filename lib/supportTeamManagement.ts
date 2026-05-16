@@ -1,12 +1,20 @@
-// Support Team Management System
-// Backend-ready infrastructure for support team operations
+// Support Team Management System - Firebase-backed
+import {
+  getSupportTeamMember,
+  getAllSupportTeam as getFirestoreTeam,
+  authSupportMember as authFirebaseMember,
+  createSupportMember,
+  updateSupportMember as updateFirebaseMember,
+  deleteSupportMember as deleteFirebaseMember,
+} from './db/supportTeam';
+import { logActivity } from './db/activity';
 
 export interface SupportTeamMember {
   id: string;
   name: string;
   username: string;
   email: string;
-  password: string; // In production: store hashed password
+  password: string;
   role: 'support' | 'senior-support' | 'support-lead';
   status: 'active' | 'inactive' | 'pending';
   joinedDate: string;
@@ -24,8 +32,8 @@ export interface SupportMemberActivity {
   details?: string;
 }
 
-// Mock support team database
-let SUPPORT_TEAM: SupportTeamMember[] = [
+// Mock data for seeding Firebase
+const MOCK_SUPPORT_TEAM: SupportTeamMember[] = [
   {
     id: 'support-1',
     name: 'John Support',
@@ -93,45 +101,30 @@ let SUPPORT_TEAM: SupportTeamMember[] = [
   },
 ];
 
-let SUPPORT_ACTIVITY: SupportMemberActivity[] = [];
+// Local cache for offline support
+let SUPPORT_TEAM_CACHE: SupportTeamMember[] | null = null;
+let SUPPORT_ACTIVITY_CACHE: SupportMemberActivity[] = [];
 
-// Get all support team members
 export const getAllSupportTeam = (): SupportTeamMember[] => {
-  if (typeof window === 'undefined') return SUPPORT_TEAM;
-
-  const saved = localStorage.getItem('supportTeam');
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error('Failed to parse supportTeam from localStorage', e);
-      return SUPPORT_TEAM;
-    }
+  // Return cached data if available
+  if (SUPPORT_TEAM_CACHE) {
+    return SUPPORT_TEAM_CACHE;
   }
 
-  // Initialize localStorage with mock data if empty
-  try {
-    localStorage.setItem('supportTeam', JSON.stringify(SUPPORT_TEAM));
-  } catch (e) {
-    console.error('Failed to save supportTeam to localStorage', e);
-  }
-
-  return SUPPORT_TEAM;
+  // Return mock data as fallback
+  return MOCK_SUPPORT_TEAM;
 };
 
-// Get support team member by ID
 export const getSupportMemberById = (id: string): SupportTeamMember | null => {
   const team = getAllSupportTeam();
   return team.find(m => m.id === id) || null;
 };
 
-// Get support team member by username
 export const getSupportMemberByUsername = (username: string): SupportTeamMember | null => {
   const team = getAllSupportTeam();
   return team.find(m => m.username.toLowerCase() === username.toLowerCase()) || null;
 };
 
-// Authenticate support team member
 export const authSupportMember = (username: string, password: string): SupportTeamMember | null => {
   const member = getSupportMemberByUsername(username);
   if (member && member.password === password && member.status === 'active') {
@@ -140,7 +133,6 @@ export const authSupportMember = (username: string, password: string): SupportTe
   return null;
 };
 
-// Add new support team member
 export const addSupportMember = (member: Omit<SupportTeamMember, 'id'>): SupportTeamMember => {
   const newMember: SupportTeamMember = {
     ...member,
@@ -149,15 +141,14 @@ export const addSupportMember = (member: Omit<SupportTeamMember, 'id'>): Support
 
   const team = getAllSupportTeam();
   team.push(newMember);
+  SUPPORT_TEAM_CACHE = team;
 
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('supportTeam', JSON.stringify(team));
-  }
+  // Sync to Firestore in background (non-blocking)
+  createSupportMember(newMember.id, member).catch(console.error);
 
   return newMember;
 };
 
-// Update support team member
 export const updateSupportMember = (id: string, updates: Partial<SupportTeamMember>): SupportTeamMember | null => {
   const team = getAllSupportTeam();
   const index = team.findIndex(m => m.id === id);
@@ -165,15 +156,17 @@ export const updateSupportMember = (id: string, updates: Partial<SupportTeamMemb
   if (index === -1) return null;
 
   team[index] = { ...team[index], ...updates };
+  SUPPORT_TEAM_CACHE = team;
 
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('supportTeam', JSON.stringify(team));
-  }
+  // Sync to Firestore in background (filter out string-based joinedDate to avoid type issues)
+  const firebaseUpdates = Object.fromEntries(
+    Object.entries(updates).filter(([key]) => key !== 'joinedDate')
+  );
+  updateFirebaseMember(id, firebaseUpdates).catch(console.error);
 
   return team[index];
 };
 
-// Delete support team member
 export const deleteSupportMember = (id: string): boolean => {
   const team = getAllSupportTeam();
   const index = team.findIndex(m => m.id === id);
@@ -181,15 +174,14 @@ export const deleteSupportMember = (id: string): boolean => {
   if (index === -1) return false;
 
   team.splice(index, 1);
+  SUPPORT_TEAM_CACHE = team;
 
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('supportTeam', JSON.stringify(team));
-  }
+  // Sync to Firestore in background
+  deleteFirebaseMember(id).catch(console.error);
 
   return true;
 };
 
-// Log support team activity
 export const logSupportActivity = (memberId: string, action: string, ticketId?: string, details?: string): SupportMemberActivity => {
   const activity: SupportMemberActivity = {
     id: `activity-${Date.now()}`,
@@ -200,23 +192,24 @@ export const logSupportActivity = (memberId: string, action: string, ticketId?: 
     details,
   };
 
-  SUPPORT_ACTIVITY.push(activity);
+  SUPPORT_ACTIVITY_CACHE.push(activity);
 
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('supportActivity', JSON.stringify(SUPPORT_ACTIVITY));
-  }
+  // Sync to Firestore in background
+  logActivity({
+    memberId,
+    memberName: getSupportMemberById(memberId)?.name || 'Unknown',
+    action,
+    ticketId,
+    details,
+  }).catch(console.error);
 
   return activity;
 };
 
-// Get support member activity
 export const getSupportMemberActivity = (memberId: string): SupportMemberActivity[] => {
-  const saved = typeof window !== 'undefined' ? localStorage.getItem('supportActivity') : null;
-  const activities = saved ? JSON.parse(saved) : SUPPORT_ACTIVITY;
-  return activities.filter((a: SupportMemberActivity) => a.memberId === memberId);
+  return SUPPORT_ACTIVITY_CACHE.filter(a => a.memberId === memberId);
 };
 
-// Get support team statistics
 export const getSupportTeamStats = () => {
   const team = getAllSupportTeam();
   return {
@@ -232,7 +225,6 @@ export const getSupportTeamStats = () => {
   };
 };
 
-// Generate temporary password for new support member
 export const generateTempPassword = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
   let password = '';
@@ -242,8 +234,47 @@ export const generateTempPassword = (): string => {
   return password;
 };
 
-// Initialize support team from mock data if empty
-export const initializeSupportTeam = () => {
-  // This will automatically initialize localStorage if needed
-  getAllSupportTeam();
+// Initialize support team and sync with Firestore
+export const initializeSupportTeam = async () => {
+  try {
+    // Load from Firestore
+    const firestoreTeam = await getFirestoreTeam();
+    if (firestoreTeam && firestoreTeam.length > 0) {
+      SUPPORT_TEAM_CACHE = firestoreTeam.map(m => ({
+        id: m.id,
+        name: m.name,
+        username: m.username,
+        email: m.email,
+        password: m.password || '',
+        role: m.role,
+        status: m.status,
+        joinedDate: typeof m.joinedDate === 'string' ? m.joinedDate : new Date(m.joinedDate?.toDate?.() || Date.now()).toLocaleDateString(),
+        phone: m.phone,
+        avatar: m.avatar,
+        bio: m.bio,
+      })) as SupportTeamMember[];
+    } else {
+      // Seed Firestore with mock data if empty
+      for (const member of MOCK_SUPPORT_TEAM) {
+        await createSupportMember(member.id, {
+          name: member.name,
+          username: member.username,
+          email: member.email,
+          password: member.password,
+          role: member.role,
+          status: member.status,
+          phone: member.phone,
+          avatar: member.avatar,
+          bio: member.bio,
+        }).catch(() => {
+          // Ignore if member already exists
+        });
+      }
+      SUPPORT_TEAM_CACHE = MOCK_SUPPORT_TEAM;
+    }
+  } catch (error) {
+    console.error('Failed to initialize support team from Firestore:', error);
+    // Fallback to mock data
+    SUPPORT_TEAM_CACHE = MOCK_SUPPORT_TEAM;
+  }
 };
