@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
 import { useState } from 'react';
-import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -25,22 +24,31 @@ export default function ContactPage() {
     e.preventDefault();
 
     try {
-      const ticketNumber = await generateTicketNumber();
-      await createTicket({
-        ticketNumber,
-        userId: `client-${Date.now()}`,
-        userName: formData.name,
-        userEmail: formData.email,
-        userType: 'client',
-        category: 'general-inquiry',
-        subject: `Contact Request from ${formData.name}`,
-        message: formData.message,
-        status: 'assigned',
-        priority: 'low',
+      const response = await fetch('/RESET-COMMERCIAL-CLEANING/api/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: `client-${Date.now()}`,
+          userName: formData.name,
+          userEmail: formData.email,
+          userType: 'client',
+          category: 'general-inquiry',
+          subject: `Contact Request from ${formData.name}`,
+          message: formData.message,
+          priority: 'low',
+        }),
       });
 
-      setSubmitted(true);
-      setFormData({ name: '', email: '', phone: '', message: '' });
+      const data = await response.json();
+
+      if (data.success) {
+        setSubmitted(true);
+        setFormData({ name: '', email: '', phone: '', message: '' });
+      } else {
+        alert('Failed to send message: ' + (data.error || 'Unknown error'));
+      }
     } catch (error) {
       console.error('Failed to create contact ticket:', error);
       alert('Failed to send message. Please try again.');

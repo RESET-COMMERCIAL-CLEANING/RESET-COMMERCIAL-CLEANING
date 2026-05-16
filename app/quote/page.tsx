@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useState } from 'react';
-import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
 
 export default function QuotePage() {
   const [formData, setFormData] = useState({
@@ -30,21 +29,30 @@ export default function QuotePage() {
     e.preventDefault();
 
     try {
-      const ticketNumber = await generateTicketNumber();
-      await createTicket({
-        ticketNumber,
-        userId: `client-${Date.now()}`,
-        userName: formData.company,
-        userEmail: formData.email,
-        userType: 'client',
-        category: formData.serviceType,
-        subject: `Quote Request - ${formData.serviceType}`,
-        message: `Company: ${formData.company}\nPhone: ${formData.phone}\nSquare Footage: ${formData.squareFeet}\nFrequency: ${formData.frequency}\n\nAdditional Details:\n${formData.message}`,
-        status: 'assigned',
-        priority: 'medium',
+      const response = await fetch('/RESET-COMMERCIAL-CLEANING/api/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: `client-${Date.now()}`,
+          userName: formData.company,
+          userEmail: formData.email,
+          userType: 'client',
+          category: formData.serviceType,
+          subject: `Quote Request - ${formData.serviceType}`,
+          message: `Company: ${formData.company}\nPhone: ${formData.phone}\nSquare Footage: ${formData.squareFeet}\nFrequency: ${formData.frequency}\n\nAdditional Details:\n${formData.message}`,
+          priority: 'medium',
+        }),
       });
 
-      setSubmitted(true);
+      const data = await response.json();
+
+      if (data.success) {
+        setSubmitted(true);
+      } else {
+        alert('Failed to submit quote: ' + (data.error || 'Unknown error'));
+      }
     } catch (error) {
       console.error('Failed to create quote ticket:', error);
       alert('Failed to submit quote. Please try again.');
