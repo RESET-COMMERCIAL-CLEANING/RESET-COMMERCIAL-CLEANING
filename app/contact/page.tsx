@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Phone, Mail, MapPin, Clock, Send, Loader } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, Send, Loader, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
+import Link from 'next/link';
 import { Toast, useToast } from '@/components/Toast';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -17,6 +18,7 @@ export default function ContactPage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [ticketNumber, setTicketNumber] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -31,12 +33,18 @@ export default function ContactPage() {
 
     try {
       if (!db) {
-        throw new Error('Firebase not initialized. Please check your configuration.');
+        console.error('Firebase not initialized');
+        addToast('Firebase not initialized. Please check your configuration.', 'error', 8000);
+        setIsLoading(false);
+        return;
       }
 
+      console.log('Starting contact ticket creation...');
       const ticketsRef = collection(db, 'tickets');
+      const newTicketNumber = `TKT-${Date.now().toString().slice(-6)}`;
+
       const ticketData = {
-        ticketNumber: `TKT-${Date.now().toString().slice(-6)}`,
+        ticketNumber: newTicketNumber,
         userId: `client-${Date.now()}`,
         userName: formData.name,
         userEmail: formData.email,
@@ -50,14 +58,29 @@ export default function ContactPage() {
         attachments: [],
       };
 
-      await addDoc(ticketsRef, ticketData);
+      console.log('Submitting contact data:', ticketData);
+      const docRef = await addDoc(ticketsRef, ticketData);
+      console.log('Contact ticket created successfully with ID:', docRef.id);
+
+      setTicketNumber(newTicketNumber);
+      setIsLoading(false);
       setSubmitted(true);
       setFormData({ name: '', email: '', phone: '', message: '' });
       addToast('Message sent successfully!', 'success', 6000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create contact ticket:', error);
-      addToast('Failed to send message. Please try again.', 'error', 6000);
-    } finally {
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+
+      let errorMessage = 'Failed to send message. Please try again.';
+
+      if (error.code === 'permission-denied') {
+        errorMessage = 'Permission denied. Please check Firestore security rules.';
+      } else if (error.message?.includes('not initialized')) {
+        errorMessage = 'Firebase configuration missing. Please refresh and try again.';
+      }
+
+      addToast(errorMessage, 'error', 8000);
       setIsLoading(false);
     }
   };
@@ -97,28 +120,59 @@ export default function ContactPage() {
               transition={{ duration: 0.6 }}
               className="text-center py-20"
             >
-              <div className="w-20 h-20 bg-reset-green/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              {/* Success Icon */}
+              <div className="w-24 h-24 bg-reset-green/20 rounded-full flex items-center justify-center mx-auto mb-8">
                 <motion.div
                   animate={{ scale: [0.8, 1.2, 1] }}
                   transition={{ duration: 0.6 }}
-                  className="text-5xl"
+                  className="text-6xl"
                 >
                   ✓
                 </motion.div>
               </div>
-              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">Message Sent!</h2>
-              <p className="text-lg sm:text-xl text-gray-400 mb-4">
+
+              {/* Main Message */}
+              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-2">Message Sent!</h2>
+              <p className="text-xl text-reset-green font-semibold mb-6">Your inquiry has been successfully received</p>
+
+              {/* Ticket Number */}
+              {ticketNumber && (
+                <div className="bg-reset-green/10 border border-reset-green/50 rounded-lg p-6 mb-8 inline-block">
+                  <p className="text-gray-400 text-sm mb-2">Your Support Ticket Number</p>
+                  <p className="text-3xl font-bold text-reset-green font-mono">{ticketNumber}</p>
+                  <p className="text-gray-400 text-xs mt-2">Save this number for your records</p>
+                </div>
+              )}
+
+              {/* Details */}
+              <p className="text-base sm:text-lg text-gray-400 mb-2">
                 Thank you for reaching out to RESET.
               </p>
-              <p className="text-base sm:text-lg text-gray-400 mb-12">
-                We've received your message and will get back to you within 24 hours.
+              <p className="text-sm sm:text-base text-gray-400 mb-12">
+                We've received your message at <span className="text-reset-green font-semibold">{formData.email}</span> and will get back to you within 24 hours. Our support team will use the ticket number above to track your inquiry.
               </p>
-              <button
-                onClick={() => setSubmitted(false)}
-                className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-reset-green text-black font-bold rounded-lg hover:bg-reset-green/80 transition-all"
-              >
-                Send Another Message
-              </button>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => {
+                    setSubmitted(false);
+                    setTicketNumber('');
+                    setFormData({ name: '', email: '', phone: '', message: '' });
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-reset-green text-black font-bold rounded-lg hover:bg-reset-green/80 transition-all"
+                >
+                  Send Another Message
+                  <Send size={18} />
+                </button>
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3 border-2 border-reset-green text-reset-green font-bold rounded-lg hover:bg-reset-green/10 transition-all"
+                >
+                  Back to Home
+                  <ArrowRight size={18} />
+                </Link>
+              </div>
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

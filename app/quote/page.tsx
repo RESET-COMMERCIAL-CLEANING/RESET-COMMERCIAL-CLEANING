@@ -22,6 +22,7 @@ export default function QuotePage() {
 
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [ticketNumber, setTicketNumber] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -54,10 +55,16 @@ export default function QuotePage() {
 
     try {
       if (!db) {
-        throw new Error('Firebase not initialized. Please check your configuration.');
+        console.error('Firebase not initialized');
+        addToast('Firebase not initialized. Please check your configuration.', 'error', 8000);
+        setIsLoading(false);
+        return;
       }
 
+      console.log('Starting ticket creation...');
       const ticketNumber = await generateTicketNumber();
+      console.log('Generated ticket number:', ticketNumber);
+
       const ticketsRef = collection(db, 'tickets');
 
       const ticketData = {
@@ -75,13 +82,28 @@ export default function QuotePage() {
         attachments: [],
       };
 
-      await addDoc(ticketsRef, ticketData);
+      console.log('Submitting ticket data:', ticketData);
+      const docRef = await addDoc(ticketsRef, ticketData);
+      console.log('Ticket created successfully with ID:', docRef.id);
+
+      setTicketNumber(ticketNumber);
+      setIsLoading(false);
       setSubmitted(true);
       addToast('Quote request submitted successfully!', 'success', 6000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create quote ticket:', error);
-      addToast('Failed to submit quote. Please try again.', 'error', 6000);
-    } finally {
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+
+      let errorMessage = 'Failed to submit quote. Please try again.';
+
+      if (error.code === 'permission-denied') {
+        errorMessage = 'Permission denied. Please check Firestore security rules.';
+      } else if (error.message?.includes('not initialized')) {
+        errorMessage = 'Firebase configuration missing. Please refresh and try again.';
+      }
+
+      addToast(errorMessage, 'error', 8000);
       setIsLoading(false);
     }
   };
@@ -98,26 +120,44 @@ export default function QuotePage() {
             transition={{ duration: 0.6 }}
             className="text-center py-20"
           >
-            <div className="w-20 h-20 bg-reset-green/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            {/* Success Icon */}
+            <div className="w-24 h-24 bg-reset-green/20 rounded-full flex items-center justify-center mx-auto mb-8">
               <motion.div
                 animate={{ scale: [0.8, 1.2, 1] }}
                 transition={{ duration: 0.6 }}
-                className="text-5xl"
+                className="text-6xl"
               >
                 ✓
               </motion.div>
             </div>
-            <h2 className="text-5xl font-bold text-white mb-4">Quote Request Submitted!</h2>
-            <p className="text-xl text-gray-400 mb-4">
+
+            {/* Main Message */}
+            <h2 className="text-5xl font-bold text-white mb-2">Quote Request Submitted!</h2>
+            <p className="text-xl text-reset-green font-semibold mb-6">Your request has been successfully received</p>
+
+            {/* Ticket Number */}
+            {ticketNumber && (
+              <div className="bg-reset-green/10 border border-reset-green/50 rounded-lg p-6 mb-8 inline-block">
+                <p className="text-gray-400 text-sm mb-2">Your Ticket Number</p>
+                <p className="text-3xl font-bold text-reset-green font-mono">{ticketNumber}</p>
+                <p className="text-gray-400 text-xs mt-2">Save this number for your records</p>
+              </div>
+            )}
+
+            {/* Details */}
+            <p className="text-lg text-gray-400 mb-2">
               Thank you for choosing RESET Commercial Cleaning.
             </p>
-            <p className="text-lg text-gray-400 mb-12">
-              Our team will review your request and contact you within 24 hours with a customized quote tailored to your cleaning needs.
+            <p className="text-base text-gray-400 mb-12">
+              Our team will review your request and contact you at <span className="text-reset-green font-semibold">{formData.email}</span> within 24 hours with a customized quote tailored to your cleaning needs.
             </p>
+
+            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => {
                   setSubmitted(false);
+                  setTicketNumber('');
                   setFormData({
                     company: '',
                     email: '',
