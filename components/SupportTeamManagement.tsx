@@ -4,16 +4,17 @@ import { motion } from 'framer-motion';
 import { Plus, Edit2, Trash2, Eye, Activity, User, Mail, Lock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import {
-  getAllSupportTeam,
-  addSupportMember,
+  generateTempPassword,
+} from '@/lib/supportTeamManagement';
+import {
+  createSupportMember,
   updateSupportMember,
   deleteSupportMember,
-  getSupportMemberActivity,
-  getSupportTeamStats,
-  generateTempPassword,
   SupportTeamMember,
-  SupportMemberActivity,
-} from '@/lib/supportTeamManagement';
+} from '@/lib/db/supportTeam';
+import { getActivityByMember, Activity as ActivityLog } from '@/lib/db/activity';
+import { collection, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 type ViewMode = 'list' | 'add' | 'edit' | 'activity';
 
@@ -29,7 +30,7 @@ export default function SupportTeamManagement() {
   const [supportTeam, setSupportTeam] = useState<SupportTeamMember[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedMember, setSelectedMember] = useState<SupportTeamMember | null>(null);
-  const [activity, setActivity] = useState<SupportMemberActivity[]>([]);
+  const [activity, setActivity] = useState<ActivityLog[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
 
   const [formData, setFormData] = useState({
@@ -42,14 +43,37 @@ export default function SupportTeamManagement() {
     bio: '',
   });
 
-  const stats = getSupportTeamStats();
-
   useEffect(() => {
-    const team = getAllSupportTeam();
-    setSupportTeam(team);
+    // Set up real-time listener for support team
+    const supportTeamCollection = collection(db, 'supportTeam');
+    const unsubscribe = onSnapshot(supportTeamCollection, (snapshot) => {
+      const team = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as SupportTeamMember[];
+      setSupportTeam(team);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const handleAdd = () => {
+  const calculateStats = () => {
+    return {
+      total: supportTeam.length,
+      active: supportTeam.filter(m => m.status === 'active').length,
+      inactive: supportTeam.filter(m => m.status === 'inactive').length,
+      pending: supportTeam.filter(m => m.status === 'pending').length,
+      byRole: {
+        support: supportTeam.filter(m => m.role === 'support').length,
+        seniorSupport: supportTeam.filter(m => m.role === 'senior-support').length,
+        supportLead: supportTeam.filter(m => m.role === 'support-lead').length,
+      },
+    };
+  };
+
+  const stats = calculateStats();
+
+  const handleAdd = async () => {
     if (!formData.name || !formData.username || !formData.email || !formData.password) {
       setModal({
         type: 'alert',
@@ -60,19 +84,19 @@ export default function SupportTeamManagement() {
     }
 
     try {
-      const newMember = addSupportMember({
+      const newId = `support-${Date.now()}`;
+      const memberName = formData.name;
+      await createSupportMember(newId, {
         name: formData.name,
         username: formData.username,
         email: formData.email,
         password: formData.password,
         role: formData.role,
         status: 'active',
-        joinedDate: new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' }),
-        phone: formData.phone,
-        bio: formData.bio,
+        phone: formData.phone || undefined,
+        bio: formData.bio || undefined,
       });
 
-      setSupportTeam([...supportTeam, newMember]);
       setFormData({
         name: '',
         username: '',
@@ -87,9 +111,10 @@ export default function SupportTeamManagement() {
       setModal({
         type: 'success',
         title: 'Success',
-        message: `Support team member "${newMember.name}" has been added successfully.`,
+        message: `Support team member "${memberName}" has been added successfully.`,
       });
     } catch (error) {
+      console.error('Failed to add support member:', error);
       setModal({
         type: 'alert',
         title: 'Error',
@@ -98,32 +123,39 @@ export default function SupportTeamManagement() {
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedMember) return;
 
     try {
-      const updated = updateSupportMember(selectedMember.id, formData);
-      if (updated) {
-        setSupportTeam(supportTeam.map(m => (m.id === selectedMember.id ? updated : m)));
-        setViewMode('list');
-        setSelectedMember(null);
-        setFormData({
-          name: '',
-          username: '',
-          email: '',
-          password: '',
-          role: 'support',
-          phone: '',
-          bio: '',
-        });
+      await updateSupportMember(selectedMember.id, {
+        name: formData.name,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        phone: formData.phone || undefined,
+        bio: formData.bio || undefined,
+      } as Partial<SupportTeamMember>);
 
-        setModal({
-          type: 'success',
-          title: 'Success',
-          message: 'Support team member has been updated successfully.',
-        });
-      }
+      setViewMode('list');
+      setSelectedMember(null);
+      setFormData({
+        name: '',
+        username: '',
+        email: '',
+        password: '',
+        role: 'support',
+        phone: '',
+        bio: '',
+      });
+
+      setModal({
+        type: 'success',
+        title: 'Success',
+        message: 'Support team member has been updated successfully.',
+      });
     } catch (error) {
+      console.error('Failed to update support member:', error);
       setModal({
         type: 'alert',
         title: 'Error',
@@ -138,15 +170,16 @@ export default function SupportTeamManagement() {
       title: 'Delete Support Team Member',
       message: `Are you sure you want to delete ${member.name}? This action cannot be undone.`,
       actionLabel: 'Delete',
-      onConfirm: () => {
-        if (deleteSupportMember(member.id)) {
-          setSupportTeam(supportTeam.filter(m => m.id !== member.id));
+      onConfirm: async () => {
+        try {
+          await deleteSupportMember(member.id);
           setModal({
             type: 'success',
             title: 'Deleted',
             message: `${member.name} has been removed from the support team.`,
           });
-        } else {
+        } catch (error) {
+          console.error('Failed to delete support member:', error);
           setModal({
             type: 'alert',
             title: 'Error',
@@ -157,11 +190,20 @@ export default function SupportTeamManagement() {
     });
   };
 
-  const handleViewActivity = (member: SupportTeamMember) => {
-    const memberActivity = getSupportMemberActivity(member.id);
-    setSelectedMember(member);
-    setActivity(memberActivity);
-    setViewMode('activity');
+  const handleViewActivity = async (member: SupportTeamMember) => {
+    try {
+      const memberActivity = await getActivityByMember(member.id);
+      setSelectedMember(member);
+      setActivity(memberActivity);
+      setViewMode('activity');
+    } catch (error) {
+      console.error('Failed to load activity:', error);
+      setModal({
+        type: 'alert',
+        title: 'Error',
+        message: 'Failed to load activity log',
+      });
+    }
   };
 
   const handleGeneratePassword = () => {
@@ -434,7 +476,11 @@ export default function SupportTeamManagement() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="font-bold text-white">{act.action}</p>
-                          <p className="text-xs text-gray-400 mt-1">{act.timestamp}</p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {act.timestamp instanceof Timestamp
+                              ? act.timestamp.toDate().toLocaleString()
+                              : new Date(act.timestamp).toLocaleString()}
+                          </p>
                           {act.details && <p className="text-sm text-gray-300 mt-2">{act.details}</p>}
                         </div>
                         {act.ticketId && <span className="text-xs text-reset-green font-bold">{act.ticketId}</span>}
