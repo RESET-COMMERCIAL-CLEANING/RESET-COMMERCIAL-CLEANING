@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { ArrowRight, Loader } from 'lucide-react';
 import { useState } from 'react';
 import { Toast, useToast } from '@/components/Toast';
+import { collection, addDoc, query, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function QuotePage() {
   const { toasts, addToast, removeToast } = useToast();
@@ -28,36 +30,54 @@ export default function QuotePage() {
     });
   };
 
+  const generateTicketNumber = async (): Promise<string> => {
+    if (!db) {
+      throw new Error('Firebase not initialized');
+    }
+
+    const ticketsRef = collection(db, 'tickets');
+    const q = query(ticketsRef, orderBy('createdAt', 'desc'), limit(1));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      return 'TKT-001';
+    }
+
+    const lastDoc = snapshot.docs[0];
+    const lastNumber = parseInt(lastDoc.id.split('-')[1] || '0');
+    return `TKT-${String(lastNumber + 1).padStart(3, '0')}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: `client-${Date.now()}`,
-          userName: formData.company,
-          userEmail: formData.email,
-          userType: 'client',
-          category: formData.serviceType,
-          subject: `Quote Request - ${formData.serviceType}`,
-          message: `Company: ${formData.company}\nPhone: ${formData.phone}\nSquare Footage: ${formData.squareFeet}\nFrequency: ${formData.frequency}\n\nAdditional Details:\n${formData.message}`,
-          priority: 'medium',
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setSubmitted(true);
-        addToast('Quote request submitted successfully!', 'success', 6000);
-      } else {
-        addToast(`Failed to submit quote: ${data.error || 'Unknown error'}`, 'error', 6000);
+      if (!db) {
+        throw new Error('Firebase not initialized. Please check your configuration.');
       }
+
+      const ticketNumber = await generateTicketNumber();
+      const ticketsRef = collection(db, 'tickets');
+
+      const ticketData = {
+        ticketNumber,
+        userId: `client-${Date.now()}`,
+        userName: formData.company,
+        userEmail: formData.email,
+        userType: 'client',
+        category: formData.serviceType,
+        subject: `Quote Request - ${formData.serviceType}`,
+        message: `Company: ${formData.company}\nPhone: ${formData.phone}\nSquare Footage: ${formData.squareFeet}\nFrequency: ${formData.frequency}\n\nAdditional Details:\n${formData.message}`,
+        priority: 'medium',
+        status: 'assigned',
+        createdAt: Timestamp.now(),
+        attachments: [],
+      };
+
+      await addDoc(ticketsRef, ticketData);
+      setSubmitted(true);
+      addToast('Quote request submitted successfully!', 'success', 6000);
     } catch (error) {
       console.error('Failed to create quote ticket:', error);
       addToast('Failed to submit quote. Please try again.', 'error', 6000);

@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, Clock, Send, Loader } from 'lucide-react';
 import { useState } from 'react';
 import { Toast, useToast } from '@/components/Toast';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function ContactPage() {
   const { toasts, addToast, removeToast } = useToast();
@@ -28,32 +30,30 @@ export default function ContactPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: `client-${Date.now()}`,
-          userName: formData.name,
-          userEmail: formData.email,
-          userType: 'client',
-          category: 'general-inquiry',
-          subject: `Contact Request from ${formData.name}`,
-          message: formData.message,
-          priority: 'low',
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setSubmitted(true);
-        setFormData({ name: '', email: '', phone: '', message: '' });
-        addToast('Message sent successfully!', 'success', 6000);
-      } else {
-        addToast(`Failed to send message: ${data.error || 'Unknown error'}`, 'error', 6000);
+      if (!db) {
+        throw new Error('Firebase not initialized. Please check your configuration.');
       }
+
+      const ticketsRef = collection(db, 'tickets');
+      const ticketData = {
+        ticketNumber: `TKT-${Date.now().toString().slice(-6)}`,
+        userId: `client-${Date.now()}`,
+        userName: formData.name,
+        userEmail: formData.email,
+        userType: 'client',
+        category: 'general-inquiry',
+        subject: `Contact Request from ${formData.name}`,
+        message: formData.message,
+        priority: 'low',
+        status: 'assigned',
+        createdAt: Timestamp.now(),
+        attachments: [],
+      };
+
+      await addDoc(ticketsRef, ticketData);
+      setSubmitted(true);
+      setFormData({ name: '', email: '', phone: '', message: '' });
+      addToast('Message sent successfully!', 'success', 6000);
     } catch (error) {
       console.error('Failed to create contact ticket:', error);
       addToast('Failed to send message. Please try again.', 'error', 6000);
