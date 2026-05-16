@@ -6,6 +6,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, X, LogOut, User, Phone, MessageSquare, Edit } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { logout } from '@/lib/auth';
+import { uploadProfilePicture } from '@/lib/storage';
+import { updateUser } from '@/lib/db/users';
+import { updateSupportMember } from '@/lib/db/supportTeam';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -92,9 +95,25 @@ export function Navbar() {
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-  const handleSaveProfile = () => {
-    setProfile(editProfile);
-    setShowProfileEdit(false);
+  const handleSaveProfile = async () => {
+    try {
+      setProfile(editProfile);
+
+      // Persist avatar to Firestore if it's a Firebase URL (not a blob URL)
+      if (loggedInUser?.id && editProfile.avatar && !editProfile.avatar.startsWith('blob:')) {
+        if (isSupportPortal) {
+          // Support member
+          await updateSupportMember(loggedInUser.id, { avatar: editProfile.avatar });
+        } else {
+          // Regular user (client or subcontractor)
+          await updateUser(loggedInUser.id, { avatarUrl: editProfile.avatar });
+        }
+      }
+
+      setShowProfileEdit(false);
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+    }
   };
 
   const handleSupportSubmit = () => {
@@ -549,15 +568,22 @@ export function Navbar() {
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            const imageUrl = event.target?.result as string;
-                            setEditProfile({ ...editProfile, avatar: imageUrl });
-                          };
-                          reader.readAsDataURL(file);
+                          try {
+                            // Show preview immediately using blob URL
+                            const preview = URL.createObjectURL(file);
+                            setEditProfile({ ...editProfile, avatar: preview });
+
+                            // Upload to Firebase Storage in background
+                            const userId = loggedInUser?.id || 'unknown';
+                            const firebaseUrl = await uploadProfilePicture(userId, file);
+                            // Update with actual Firebase URL
+                            setEditProfile((prev) => ({ ...prev, avatar: firebaseUrl }));
+                          } catch (error) {
+                            console.error('Failed to upload profile picture:', error);
+                          }
                         }
                       }}
                       className="w-full px-3 py-1.5 rounded bg-white/5 border border-reset-green/30 text-gray-300 text-xs focus:border-reset-green focus:outline-none file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-reset-green file:text-black file:font-bold file:cursor-pointer file:text-xs hover:file:bg-reset-green/80"
