@@ -29,6 +29,16 @@ jobs:
         run: npm ci
 
       - name: Build Next.js app
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: AIzaSyDB7h85_b3GxdPlmLHrm1iqgRYIpNSyesg
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: reset-commercial-cleaning.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: reset-commercial-cleaning
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: reset-commercial-cleaning.firebasestorage.app
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: 562251351172
+          NEXT_PUBLIC_FIREBASE_APP_ID: 1:562251351172:web:60925a004a26765b282ed1
+          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: G-4HM299ENG9
+          NEXT_PUBLIC_ADMIN_EMAIL: admin@reset.com.au
+          ADMIN_PASSWORD: Reset@Admin123!
         run: npm run build
 
       - name: Upload artifact
