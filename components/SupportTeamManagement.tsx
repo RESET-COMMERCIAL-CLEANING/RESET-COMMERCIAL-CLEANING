@@ -113,12 +113,14 @@ export default function SupportTeamManagement() {
         title: 'Success',
         message: `Support team member "${memberName}" has been added successfully.`,
       });
-    } catch (error) {
-      console.error('Failed to add support member:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to add support member:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       setModal({
         type: 'alert',
         title: 'Error',
-        message: 'Failed to add support team member',
+        message: `Failed to add support team member: ${error.message || error.code || 'Unknown error'}`,
       });
     }
   };
@@ -154,12 +156,14 @@ export default function SupportTeamManagement() {
         title: 'Success',
         message: 'Support team member has been updated successfully.',
       });
-    } catch (error) {
-      console.error('Failed to update support member:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to update support member:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       setModal({
         type: 'alert',
         title: 'Error',
-        message: 'Failed to update support team member',
+        message: `Failed to update support team member: ${error.message || error.code || 'Unknown error'}`,
       });
     }
   };
@@ -178,12 +182,14 @@ export default function SupportTeamManagement() {
             title: 'Deleted',
             message: `${member.name} has been removed from the support team.`,
           });
-        } catch (error) {
-          console.error('Failed to delete support member:', error);
+        } catch (error: any) {
+          console.error('❌ Failed to delete support member:', error);
+          console.error('Error code:', error.code);
+          console.error('Error message:', error.message);
           setModal({
             type: 'alert',
             title: 'Error',
-            message: 'Failed to delete support team member',
+            message: `Failed to delete support team member: ${error.message || error.code || 'Unknown error'}`,
           });
         }
       },
