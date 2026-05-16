@@ -196,13 +196,15 @@ export default function QuotePage() {
             >
               {/* Company Name */}
               <div>
-                <label className="block text-white font-bold mb-2">Company Name</label>
+                <label htmlFor="company" className="block text-white font-bold mb-2">Company Name</label>
                 <input
+                  id="company"
                   type="text"
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
                   placeholder="Your company name"
+                  autoComplete="organization"
                   required
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all"
                 />
@@ -210,13 +212,15 @@ export default function QuotePage() {
 
               {/* Email */}
               <div>
-                <label className="block text-white font-bold mb-2">Email Address</label>
+                <label htmlFor="email" className="block text-white font-bold mb-2">Email Address</label>
                 <input
+                  id="email"
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="your@email.com"
+                  autoComplete="email"
                   required
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all"
                 />
@@ -224,13 +228,15 @@ export default function QuotePage() {
 
               {/* Phone */}
               <div>
-                <label className="block text-white font-bold mb-2">Phone Number</label>
+                <label htmlFor="phone" className="block text-white font-bold mb-2">Phone Number</label>
                 <input
+                  id="phone"
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="+61 2 XXXX XXXX"
+                  autoComplete="tel"
                   required
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all"
                 />
@@ -238,11 +244,13 @@ export default function QuotePage() {
 
               {/* Service Type */}
               <div>
-                <label className="block text-white font-bold mb-2">Service Type</label>
+                <label htmlFor="serviceType" className="block text-white font-bold mb-2">Service Type</label>
                 <select
+                  id="serviceType"
                   name="serviceType"
                   value={formData.serviceType}
                   onChange={handleChange}
+                  autoComplete="off"
                   required
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all"
                 >
@@ -258,13 +266,15 @@ export default function QuotePage() {
 
               {/* Square Feet */}
               <div>
-                <label className="block text-white font-bold mb-2">Approximate Square Footage</label>
+                <label htmlFor="squareFeet" className="block text-white font-bold mb-2">Approximate Square Footage</label>
                 <input
+                  id="squareFeet"
                   type="text"
                   name="squareFeet"
                   value={formData.squareFeet}
                   onChange={handleChange}
                   placeholder="e.g., 5,000 sqft"
+                  autoComplete="off"
                   required
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all"
                 />
@@ -272,11 +282,13 @@ export default function QuotePage() {
 
               {/* Frequency */}
               <div>
-                <label className="block text-white font-bold mb-2">Cleaning Frequency</label>
+                <label htmlFor="frequency" className="block text-white font-bold mb-2">Cleaning Frequency</label>
                 <select
+                  id="frequency"
                   name="frequency"
                   value={formData.frequency}
                   onChange={handleChange}
+                  autoComplete="off"
                   required
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all"
                 >
@@ -292,12 +304,14 @@ export default function QuotePage() {
 
               {/* Additional Details */}
               <div>
-                <label className="block text-white font-bold mb-2">Additional Details</label>
+                <label htmlFor="message" className="block text-white font-bold mb-2">Additional Details</label>
                 <textarea
+                  id="message"
                   name="message"
                   value={formData.message}
                   onChange={handleChange}
                   placeholder="Tell us anything specific about your cleaning needs..."
+                  autoComplete="off"
                   rows={5}
                   className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all"
                 />

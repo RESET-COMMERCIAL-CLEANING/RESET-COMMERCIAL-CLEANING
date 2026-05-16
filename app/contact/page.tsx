@@ -261,12 +261,14 @@ export default function ContactPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold text-white mb-2">Name</label>
+                  <label htmlFor="contact-name" className="block text-sm font-semibold text-white mb-2">Name</label>
                   <input
+                    id="contact-name"
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
+                    autoComplete="name"
                     required
                     className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none transition-colors"
                     placeholder="Your name"
@@ -274,12 +276,14 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-white mb-2">Email</label>
+                  <label htmlFor="contact-email" className="block text-sm font-semibold text-white mb-2">Email</label>
                   <input
+                    id="contact-email"
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
+                    autoComplete="email"
                     required
                     className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none transition-colors"
                     placeholder="your@email.com"
@@ -287,23 +291,27 @@ export default function ContactPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-white mb-2">Phone (Optional)</label>
+                  <label htmlFor="contact-phone" className="block text-sm font-semibold text-white mb-2">Phone (Optional)</label>
                   <input
+                    id="contact-phone"
                     type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                    autoComplete="tel"
                     className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none transition-colors"
                     placeholder="+61 2 9234 5678"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-white mb-2">Message</label>
+                  <label htmlFor="contact-message" className="block text-sm font-semibold text-white mb-2">Message</label>
                   <textarea
+                    id="contact-message"
                     name="message"
                     value={formData.message}
                     onChange={handleChange}
+                    autoComplete="off"
                     required
                     rows={5}
                     className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none transition-colors resize-none"
