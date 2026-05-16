@@ -31,6 +31,8 @@ export interface UserProfile {
   certifications?: string;
   avatarUrl?: string;
   isVerified: boolean;
+  tempPassword?: string;
+  passwordChangedAt?: string;
 }
 
 const usersCollection = collection(db, 'users');

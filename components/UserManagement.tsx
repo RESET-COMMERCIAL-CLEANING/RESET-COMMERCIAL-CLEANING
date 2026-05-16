@@ -1,21 +1,26 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Eye, EyeOff, Copy, RefreshCw, X, Users, UserCheck, UserX } from 'lucide-react';
 import {
-  addUser,
-  updateUser,
-  deleteUser,
+  updateUser as updateLocalUser,
   resetPassword,
-  getAllUsers,
-  getUserStats,
   getUserActivity,
   UserProfile,
   UserActivity,
   deactivateUser,
   activateUser,
 } from '@/lib/userManagement';
+import {
+  getAllUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+} from '@/lib/db/users';
+import { getActivityByMember } from '@/lib/db/activity';
+import { collection, onSnapshot, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 type ViewMode = 'list' | 'add' | 'edit' | 'activity';
 
@@ -29,7 +34,7 @@ interface Modal {
 
 export default function UserManagement() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [users, setUsers] = useState<UserProfile[]>(getAllUsers());
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userRole, setUserRole] = useState<'client' | 'subcontractor'>('client');
   const [showPassword, setShowPassword] = useState(false);
@@ -53,14 +58,39 @@ export default function UserManagement() {
     certifications: '',
   });
 
-  const stats = getUserStats();
+  useEffect(() => {
+    // Set up real-time listener for users
+    const usersCollection = collection(db, 'users');
+    const unsubscribe = onSnapshot(usersCollection, (snapshot) => {
+      const userList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as UserProfile[];
+      setUsers(userList);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const calculateStats = () => {
+    return {
+      totalUsers: users.length,
+      activeUsers: users.filter(u => u.status === 'active').length,
+      inactiveUsers: users.filter(u => u.status === 'inactive').length,
+      pendingUsers: users.filter(u => u.status === 'pending').length,
+      businessOwners: users.filter(u => u.role === 'client').length,
+      serviceProviders: users.filter(u => u.role === 'subcontractor').length,
+    };
+  };
+
+  const stats = calculateStats();
 
   // Filtered users
   const filteredUsers = users.filter(u =>
     filterStatus === 'all' ? true : u.status === filterStatus
   );
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!formData.firstName || !formData.email) {
       setModal({
         type: 'alert',
@@ -70,50 +100,60 @@ export default function UserManagement() {
       return;
     }
 
-    const newUser = addUser({
-      id: '',
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      role: userRole,
-      status: 'pending',
-      createdAt: new Date().toLocaleDateString(),
-      isVerified: false,
-      company: formData.company,
-      address: formData.address,
-      industry: formData.industry,
-      squareFeet: formData.squareFeet,
-      experience: formData.experience,
-      availability: formData.availability,
-      certifications: formData.certifications,
-    });
+    try {
+      const userId = `user-${Date.now()}`;
+      const tempPassword = Math.random().toString(36).slice(-12);
 
-    setUsers(getAllUsers());
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      company: '',
-      address: '',
-      industry: '',
-      squareFeet: '',
-      experience: '',
-      availability: '',
-      certifications: '',
-    });
-    setViewMode('list');
-    setModal({
-      type: 'success',
-      title: 'User Created Successfully',
-      message: `${newUser.firstName} ${newUser.lastName} has been created.\n\nTemporary Password:\n${newUser.tempPassword}\n\nClick "Copy to Clipboard" to copy the password.`,
-      actionLabel: 'Copy to Clipboard',
-      onConfirm: () => {
-        navigator.clipboard.writeText(newUser.tempPassword || '');
-        setModal({ type: null, title: '', message: '' });
-      },
-    });
+      await createUser(userId, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        role: userRole,
+        status: 'pending',
+        isVerified: false,
+        tempPassword,
+        company: formData.company || undefined,
+        address: formData.address || undefined,
+        industry: formData.industry || undefined,
+        squareFeet: formData.squareFeet || undefined,
+        experience: formData.experience || undefined,
+        availability: formData.availability || undefined,
+        certifications: formData.certifications || undefined,
+      });
+
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        company: '',
+        address: '',
+        industry: '',
+        squareFeet: '',
+        experience: '',
+        availability: '',
+        certifications: '',
+      });
+      setViewMode('list');
+      setModal({
+        type: 'success',
+        title: 'User Created Successfully',
+        message: `${formData.firstName} ${formData.lastName} has been created.\n\nTemporary Password:\n${tempPassword}\n\nClick "Copy to Clipboard" to copy the password.`,
+        actionLabel: 'Copy to Clipboard',
+        onConfirm: () => {
+          navigator.clipboard.writeText(tempPassword);
+          setModal({ type: null, title: '', message: '' });
+        },
+      });
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      setModal({
+        type: 'alert',
+        title: 'Error',
+        message: 'Failed to create user. Please try again.',
+      });
+    }
   };
 
   const handleDeleteUser = (id: string) => {
@@ -123,48 +163,81 @@ export default function UserManagement() {
       title: 'Delete User',
       message: `Are you sure you want to delete ${userToDelete?.firstName} ${userToDelete?.lastName}? This action cannot be undone.`,
       actionLabel: 'Delete',
-      onConfirm: () => {
-        deleteUser(id);
-        setUsers(getAllUsers());
-        if (selectedUser?.id === id) setSelectedUser(null);
-        setModal({ type: null, title: '', message: '' });
+      onConfirm: async () => {
+        try {
+          await deleteUser(id);
+          if (selectedUser?.id === id) setSelectedUser(null);
+          setModal({ type: null, title: '', message: '' });
+        } catch (error) {
+          console.error('Failed to delete user:', error);
+          setModal({
+            type: 'alert',
+            title: 'Error',
+            message: 'Failed to delete user',
+          });
+        }
       },
     });
   };
 
-  const handleToggleStatus = (id: string, currentStatus: string) => {
-    if (currentStatus === 'active') {
-      deactivateUser(id);
-    } else {
-      activateUser(id);
-    }
-    setUsers(getAllUsers());
-    if (selectedUser?.id === id) {
-      setSelectedUser(getAllUsers().find(u => u.id === id) || null);
-    }
-  };
-
-  const handleResetPassword = (id: string) => {
-    const newPassword = resetPassword(id);
-    if (newPassword) {
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      await updateUser(id, { status: newStatus as 'active' | 'inactive' | 'pending' });
+      if (selectedUser?.id === id) {
+        const updatedUser = users.find(u => u.id === id);
+        if (updatedUser) setSelectedUser({ ...updatedUser, status: newStatus as 'active' | 'inactive' | 'pending' });
+      }
+    } catch (error) {
+      console.error('Failed to toggle user status:', error);
       setModal({
-        type: 'success',
-        title: 'Password Reset',
-        message: `New temporary password:\n\n${newPassword}\n\nClick "Copy to Clipboard" to copy the password.`,
-        actionLabel: 'Copy to Clipboard',
-        onConfirm: () => {
-          navigator.clipboard.writeText(newPassword);
-          setModal({ type: null, title: '', message: '' });
-        },
+        type: 'alert',
+        title: 'Error',
+        message: 'Failed to update user status',
       });
-      setUsers(getAllUsers());
     }
   };
 
-  const handleViewActivity = (userId: string) => {
-    setActivityLog(getUserActivity(userId));
-    setSelectedUser(getAllUsers().find(u => u.id === userId) || null);
-    setViewMode('activity');
+  const handleResetPassword = async (id: string) => {
+    try {
+      const newPassword = resetPassword(id);
+      if (newPassword) {
+        await updateUser(id, { tempPassword: newPassword });
+        setModal({
+          type: 'success',
+          title: 'Password Reset',
+          message: `New temporary password:\n\n${newPassword}\n\nClick "Copy to Clipboard" to copy the password.`,
+          actionLabel: 'Copy to Clipboard',
+          onConfirm: () => {
+            navigator.clipboard.writeText(newPassword);
+            setModal({ type: null, title: '', message: '' });
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Failed to reset password:', error);
+      setModal({
+        type: 'alert',
+        title: 'Error',
+        message: 'Failed to reset password',
+      });
+    }
+  };
+
+  const handleViewActivity = async (userId: string) => {
+    try {
+      const activity = await getActivityByMember(userId);
+      setActivityLog(activity as unknown as UserActivity[]);
+      setSelectedUser(users.find(u => u.id === userId) || null);
+      setViewMode('activity');
+    } catch (error) {
+      console.error('Failed to load activity:', error);
+      setModal({
+        type: 'alert',
+        title: 'Error',
+        message: 'Failed to load activity log',
+      });
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -706,7 +779,7 @@ export default function UserManagement() {
               Cancel
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (!formData.firstName || !formData.email) {
                   setModal({
                     type: 'alert',
@@ -716,27 +789,35 @@ export default function UserManagement() {
                   return;
                 }
 
-                updateUser(selectedUser.id, {
-                  firstName: formData.firstName,
-                  lastName: formData.lastName,
-                  email: formData.email,
-                  phone: formData.phone,
-                  company: formData.company,
-                  address: formData.address,
-                  industry: formData.industry,
-                  squareFeet: formData.squareFeet,
-                  experience: formData.experience,
-                  availability: formData.availability,
-                  certifications: formData.certifications,
-                });
+                try {
+                  await updateUser(selectedUser.id, {
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    email: formData.email,
+                    phone: formData.phone,
+                    company: formData.company || undefined,
+                    address: formData.address || undefined,
+                    industry: formData.industry || undefined,
+                    squareFeet: formData.squareFeet || undefined,
+                    experience: formData.experience || undefined,
+                    availability: formData.availability || undefined,
+                    certifications: formData.certifications || undefined,
+                  });
 
-                setUsers(getAllUsers());
-                setModal({
-                  type: 'success',
-                  title: 'User Updated',
-                  message: `${formData.firstName} ${formData.lastName}'s profile has been updated successfully.`,
-                });
-                setViewMode('list');
+                  setModal({
+                    type: 'success',
+                    title: 'User Updated',
+                    message: `${formData.firstName} ${formData.lastName}'s profile has been updated successfully.`,
+                  });
+                  setViewMode('list');
+                } catch (error) {
+                  console.error('Failed to update user:', error);
+                  setModal({
+                    type: 'alert',
+                    title: 'Error',
+                    message: 'Failed to update user',
+                  });
+                }
               }}
               className="flex-1 py-2 bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-bold"
             >
@@ -771,7 +852,9 @@ export default function UserManagement() {
                       <p className="font-bold text-white">{activity.action}</p>
                       <p className="text-sm text-gray-400 mt-1">{activity.details}</p>
                     </div>
-                    <span className="text-xs text-gray-500 whitespace-nowrap ml-2">{activity.timestamp}</span>
+                    <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
+                      {typeof activity.timestamp === 'string' ? activity.timestamp : typeof activity.timestamp === 'object' && 'toDate' in activity.timestamp ? (activity.timestamp as any).toDate().toLocaleString() : new Date(activity.timestamp as any).toLocaleString()}
+                    </span>
                   </div>
                 </div>
               ))
