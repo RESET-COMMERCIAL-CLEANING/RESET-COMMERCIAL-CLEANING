@@ -5,19 +5,18 @@ import Link from 'next/link';
 import { ArrowRight, Building2, Users, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Toast } from '@/components/Toast';
+import { Toast, useToast } from '@/components/Toast';
 import { loginUser } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toasts, addToast, removeToast } = useToast();
   const [step, setStep] = useState<'role' | 'email' | 'password' | 'success'>('role');
   const [role, setRole] = useState<'client' | 'subcontractor' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [email_error, setEmailError] = useState('');
   const [password_error, setPasswordError] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRoleSelect = (selected: 'client' | 'subcontractor') => {
@@ -49,8 +48,7 @@ export default function LoginPage() {
 
     if (result.success && result.user) {
       setStep('success');
-      setToastMessage(`Welcome! Signed in as ${result.user.firstName} ${result.user.lastName}`);
-      setShowToast(true);
+      addToast(`Welcome! Signed in as ${result.user.firstName} ${result.user.lastName}`, 'success', 3000);
 
       setTimeout(() => {
         const portalUrl = result.user?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
@@ -58,6 +56,7 @@ export default function LoginPage() {
       }, 1500);
     } else {
       setPasswordError(result.error || 'Login failed. Please try again.');
+      addToast(result.error || 'Login failed. Please try again.', 'error', 5000);
       setIsLoading(false);
     }
   };
@@ -74,15 +73,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black pt-32 pb-20 flex items-center justify-center">
-      {showToast && (
-        <Toast
-          message={toastMessage}
-          type="success"
-          onClose={() => setShowToast(false)}
-          duration={3000}
-        />
-      )}
+    <>
+      <Toast toasts={toasts} onRemove={removeToast} />
+      <div className="min-h-screen bg-black pt-32 pb-20 flex items-center justify-center">
       <div className="container max-w-lg">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -302,6 +295,7 @@ export default function LoginPage() {
           </p>
         </motion.div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

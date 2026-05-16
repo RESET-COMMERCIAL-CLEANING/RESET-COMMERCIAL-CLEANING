@@ -2,10 +2,12 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader } from 'lucide-react';
 import { useState } from 'react';
+import { Toast, useToast } from '@/components/Toast';
 
 export default function QuotePage() {
+  const { toasts, addToast, removeToast } = useToast();
   const [formData, setFormData] = useState({
     company: '',
     email: '',
@@ -17,6 +19,7 @@ export default function QuotePage() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -27,9 +30,10 @@ export default function QuotePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
-      const response = await fetch('/RESET-COMMERCIAL-CLEANING/api/tickets', {
+      const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,18 +54,23 @@ export default function QuotePage() {
 
       if (data.success) {
         setSubmitted(true);
+        addToast('Quote request submitted successfully!', 'success', 6000);
       } else {
-        alert('Failed to submit quote: ' + (data.error || 'Unknown error'));
+        addToast(`Failed to submit quote: ${data.error || 'Unknown error'}`, 'error', 6000);
       }
     } catch (error) {
       console.error('Failed to create quote ticket:', error);
-      alert('Failed to submit quote. Please try again.');
+      addToast('Failed to submit quote. Please try again.', 'error', 6000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black pt-32 pb-20">
-      <div className="container max-w-2xl">
+    <>
+      <Toast toasts={toasts} onRemove={removeToast} />
+      <div className="min-h-screen bg-black pt-32 pb-20">
+        <div className="container max-w-2xl">
         {submitted ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -244,10 +253,20 @@ export default function QuotePage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-4 bg-reset-green text-black font-bold rounded-lg hover:bg-reset-green/80 transition-all glow-green-hover flex items-center justify-center gap-2"
+                disabled={isLoading}
+                className="w-full py-4 bg-reset-green text-black font-bold rounded-lg hover:bg-reset-green/80 transition-all glow-green-hover flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Request Quote
-                <ArrowRight size={20} />
+                {isLoading ? (
+                  <>
+                    <Loader size={20} className="animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    Request Quote
+                    <ArrowRight size={20} />
+                  </>
+                )}
               </button>
 
               {/* Back Link */}
@@ -259,7 +278,8 @@ export default function QuotePage() {
             </motion.form>
           </motion.div>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

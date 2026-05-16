@@ -1,10 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, Send, Loader } from 'lucide-react';
 import { useState } from 'react';
+import { Toast, useToast } from '@/components/Toast';
 
 export default function ContactPage() {
+  const { toasts, addToast, removeToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -12,6 +14,7 @@ export default function ContactPage() {
     message: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -22,9 +25,10 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
-      const response = await fetch('/RESET-COMMERCIAL-CLEANING/api/tickets', {
+      const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,17 +50,22 @@ export default function ContactPage() {
       if (data.success) {
         setSubmitted(true);
         setFormData({ name: '', email: '', phone: '', message: '' });
+        addToast('Message sent successfully!', 'success', 6000);
       } else {
-        alert('Failed to send message: ' + (data.error || 'Unknown error'));
+        addToast(`Failed to send message: ${data.error || 'Unknown error'}`, 'error', 6000);
       }
     } catch (error) {
       console.error('Failed to create contact ticket:', error);
-      alert('Failed to send message. Please try again.');
+      addToast('Failed to send message. Please try again.', 'error', 6000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <>
+      <Toast toasts={toasts} onRemove={removeToast} />
+      <div className="min-h-screen bg-black">
       {/* Hero Section */}
       <section className="relative w-full pt-32 pb-20">
         <div className="container">
@@ -240,10 +249,20 @@ export default function ContactPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="w-full px-6 py-3 rounded-lg bg-reset-green text-black font-bold hover:bg-opacity-80 transition-all duration-300 glow-green-hover flex items-center justify-center gap-2"
+                  disabled={isLoading}
+                  className="w-full px-6 py-3 rounded-lg bg-reset-green text-black font-bold hover:bg-opacity-80 transition-all duration-300 glow-green-hover flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Send Message
-                  <Send size={18} />
+                  {isLoading ? (
+                    <>
+                      <Loader size={18} className="animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      Send Message
+                      <Send size={18} />
+                    </>
+                  )}
                 </motion.button>
               </form>
             </motion.div>
@@ -271,6 +290,7 @@ export default function ContactPage() {
           </motion.div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }
