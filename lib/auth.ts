@@ -11,11 +11,11 @@ export interface User {
   isSuperuser: boolean;
 }
 
-// Mock superuser credentials for demo
-// In production: Replace with backend authentication
+// Superuser credentials from environment variables
+// In production: Use backend authentication with hashed passwords
 const SUPERUSER_CREDENTIALS = {
-  email: 'admin@reset.com.au',
-  password: 'Reset@Admin123!', // In production: hash this and verify on backend
+  email: process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@reset.com.au',
+  password: process.env.ADMIN_PASSWORD || 'Reset@Admin123!',
 };
 
 // Mock superusers database
