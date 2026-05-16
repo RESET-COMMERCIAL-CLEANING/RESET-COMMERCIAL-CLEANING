@@ -4,16 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, CheckCircle, Clock, AlertCircle, X, CheckCircle2, HelpCircle, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Timestamp } from 'firebase/firestore';
 import { logSupportActivity } from '@/lib/supportTeamManagement';
-
-interface Attachment {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-  url: string;
-  uploadedAt: string;
-}
+import { subscribeToTicketsByAssignee, updateTicket, type Attachment } from '@/lib/db/tickets';
+import { uploadTicketAttachment } from '@/lib/storage';
+import { logActivity } from '@/lib/db/activity';
 
 interface SupportTicket {
   id: string;
@@ -231,7 +226,7 @@ export default function SupportMemberPortal() {
     ];
   };
 
-  const [tickets, setTickets] = useState<SupportTicket[]>(() => initializeTickets());
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
   // Filter tickets assigned to this member
   const assignedTickets = tickets.filter(t => t.assignedTo === member?.id);
@@ -239,46 +234,36 @@ export default function SupportMemberPortal() {
     filter === 'all' ? true : t.status === filter
   );
 
-  // Save tickets to localStorage whenever they change
-  useEffect(() => {
-    if (typeof window !== 'undefined' && tickets.length > 0) {
-      localStorage.setItem('supportTickets', JSON.stringify(tickets));
-    }
-  }, [tickets]);
-
-  const handleSubmitResponse = () => {
+  const handleSubmitResponse = async () => {
     if (!responseText.trim() || !selectedTicket) return;
 
-    const updatedTicket = {
-      ...selectedTicket,
-      response: responseText,
-      status: 'in-progress' as const,
-      attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined,
-    };
+    try {
+      await updateTicket(selectedTicket.id, {
+        response: responseText,
+        status: 'in-progress' as const,
+        attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+      });
 
-    setTickets(tickets.map(t =>
-      t.id === selectedTicket.id ? updatedTicket : t
-    ));
+      // Log activity
+      if (member?.id) {
+        await logActivity({
+          memberId: member.id,
+          memberName: member.name,
+          action: 'Added response to ticket',
+          ticketId: selectedTicket.id,
+          details: `Response: ${responseText.substring(0, 100)}...`,
+        });
+      }
 
-    setSelectedTicket(updatedTicket);
-
-    // Log activity
-    if (member?.id) {
-      logSupportActivity(
-        member.id,
-        'Added response to ticket',
-        selectedTicket.ticketNumber,
-        `Response: ${responseText.substring(0, 100)}...`
-      );
+      setSuccessMessage('Response submitted successfully!');
+      setShowSuccessModal(true);
+      setResponseText('');
+      setUploadedFiles([]);
+      setShowResponseForm(false);
+      setTimeout(() => setShowSuccessModal(false), 2000);
+    } catch (error) {
+      console.error('Failed to submit response:', error);
     }
-
-    setSuccessMessage('Response submitted successfully!');
-    setShowSuccessModal(true);
-    setResponseText('');
-    setUploadedFiles([]);
-    setShowResponseForm(false);
-
-    setTimeout(() => setShowSuccessModal(false), 2000);
   };
 
   const handleRequestMoreInfo = () => {
@@ -332,24 +317,25 @@ export default function SupportMemberPortal() {
     setTimeout(() => setShowSuccessModal(false), 2000);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
+    if (!files || !selectedTicket) return;
 
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
+    Array.from(files).forEach(async (file) => {
+      try {
+        const downloadUrl = await uploadTicketAttachment(selectedTicket.id, file);
         const newAttachment: Attachment = {
           id: Date.now().toString(),
           name: file.name,
           type: file.type,
           size: file.size,
-          url: e.target?.result as string,
-          uploadedAt: new Date().toLocaleString(),
+          url: downloadUrl,
+          uploadedAt: Timestamp.now(),
         };
-        setUploadedFiles([...uploadedFiles, newAttachment]);
-      };
-      reader.readAsDataURL(file);
+        setUploadedFiles(prev => [...prev, newAttachment]);
+      } catch (error) {
+        console.error('Failed to upload file:', error);
+      }
     });
 
     setFileInputKey(prev => prev + 1);
@@ -381,32 +367,31 @@ export default function SupportMemberPortal() {
     return statusFlow[currentStatus] || null;
   };
 
-  const handleStatusChange = (ticket: SupportTicket) => {
+  const handleStatusChange = async (ticket: SupportTicket) => {
     const nextStatus = getNextStatus(ticket.status);
     if (!nextStatus) return;
 
-    const updatedTicket = {
-      ...ticket,
-      status: nextStatus as any,
-    };
+    try {
+      await updateTicket(ticket.id, {
+        status: nextStatus as any,
+      });
 
-    setTickets(tickets.map(t =>
-      t.id === ticket.id ? updatedTicket : t
-    ));
-    setSelectedTicket(updatedTicket);
+      if (member?.id) {
+        await logActivity({
+          memberId: member.id,
+          memberName: member.name,
+          action: `Changed ticket status to ${nextStatus}`,
+          ticketId: ticket.id,
+          details: `Status updated from ${ticket.status} to ${nextStatus}`,
+        });
+      }
 
-    if (member?.id) {
-      logSupportActivity(
-        member.id,
-        `Changed ticket status to ${nextStatus}`,
-        ticket.ticketNumber,
-        `Status updated from ${ticket.status} to ${nextStatus}`
-      );
+      setSuccessMessage(`Ticket status updated to ${nextStatus.replace('-', ' ')}!`);
+      setShowSuccessModal(true);
+      setTimeout(() => setShowSuccessModal(false), 2000);
+    } catch (error) {
+      console.error('Failed to change ticket status:', error);
     }
-
-    setSuccessMessage(`Ticket status updated to ${nextStatus.replace('-', ' ')}!`);
-    setShowSuccessModal(true);
-    setTimeout(() => setShowSuccessModal(false), 2000);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -426,7 +411,7 @@ export default function SupportMemberPortal() {
     { label: 'Total', value: assignedTickets.length, icon: MessageSquare, color: 'text-blue-400' },
   ];
 
-  // Check authentication on mount
+  // Check authentication and subscribe to Firestore tickets
   useEffect(() => {
     const supportMemberJson = localStorage.getItem('supportMember');
     if (!supportMemberJson) {
@@ -435,12 +420,21 @@ export default function SupportMemberPortal() {
       try {
         const supportMember = JSON.parse(supportMemberJson);
         setMember(supportMember);
-        // Load tickets from localStorage
-        const savedTickets = localStorage.getItem('supportTickets');
-        if (savedTickets) {
-          setTickets(JSON.parse(savedTickets));
-        }
         setIsAuthorized(true);
+
+        // Subscribe to tickets assigned to this member from Firestore
+        const unsubscribe = subscribeToTicketsByAssignee(supportMember.id, (firebaseTickets: any[]) => {
+          const mapped = firebaseTickets.map((t: any) => ({
+            ...t,
+            createdAt: t.createdAt?.toDate?.()?.toLocaleString() || t.createdAt || '',
+            resolvedAt: t.resolvedAt?.toDate?.()?.toLocaleString() || t.resolvedAt,
+          }));
+          setTickets(mapped);
+        });
+
+        return () => {
+          unsubscribe?.();
+        };
       } catch {
         router.push('/portal/support-login');
       }

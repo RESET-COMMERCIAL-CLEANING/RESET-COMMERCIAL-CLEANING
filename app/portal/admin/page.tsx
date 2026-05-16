@@ -5,18 +5,13 @@ import Link from 'next/link';
 import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw, Users, User, Plus, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
+import { subscribeToTickets, updateTicket, type Attachment } from '@/lib/db/tickets';
+import { uploadTicketAttachment } from '@/lib/storage';
+import { getAllSupportTeam } from '@/lib/db/supportTeam';
 import UserManagement from '@/components/UserManagement';
 import SupportTeamManagement from '@/components/SupportTeamManagement';
-
-interface Attachment {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-  url: string;
-  uploadedAt: string;
-}
 
 interface SupportTicket {
   id: string;
@@ -50,6 +45,8 @@ export default function AdminPortal() {
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [assignToName, setAssignToName] = useState('');
+  const [supportTeamMembers, setSupportTeamMembers] = useState<any[]>([]);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
 
   // Initialize tickets from localStorage or use mock data
   const initializeTickets = (): SupportTicket[] => {
@@ -123,62 +120,63 @@ export default function AdminPortal() {
     ];
   };
 
-  const [tickets, setTickets] = useState<SupportTicket[]>(() => initializeTickets());
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
   const filteredTickets = tickets.filter(t =>
     filter === 'all' ? true : t.status === filter
   );
 
-  const handleSubmitResponse = () => {
+  const handleSubmitResponse = async () => {
     if (!responseText.trim() || !selectedTicket) return;
 
-    const updatedTicket = {
-      ...selectedTicket,
-      response: responseText,
-      status: 'in-progress' as const,
-      attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined,
-    };
+    try {
+      await updateTicket(selectedTicket.id, {
+        response: responseText,
+        status: 'in-progress' as const,
+        attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+      });
 
-    setTickets(tickets.map(t =>
-      t.id === selectedTicket.id ? updatedTicket : t
-    ));
-
-    setSelectedTicket(updatedTicket);
-    setResponseText('');
-    setUploadedFiles([]);
-    setShowResponseForm(false);
+      setResponseText('');
+      setUploadedFiles([]);
+      setShowResponseForm(false);
+    } catch (error) {
+      console.error('Failed to submit response:', error);
+    }
   };
 
-  const handleResolve = () => {
+  const handleResolve = async () => {
     if (!selectedTicket) return;
 
-    setTickets(tickets.map(t =>
-      t.id === selectedTicket.id
-        ? { ...t, status: 'resolved' as const, resolvedAt: new Date().toLocaleString() }
-        : t
-    ));
-
-    setSelectedTicket(null);
+    try {
+      await updateTicket(selectedTicket.id, {
+        status: 'resolved' as const,
+        resolvedAt: Timestamp.now(),
+      });
+      setSelectedTicket(null);
+    } catch (error) {
+      console.error('Failed to resolve ticket:', error);
+    }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
+    if (!files || !selectedTicket) return;
 
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
+    Array.from(files).forEach(async (file) => {
+      try {
+        const downloadUrl = await uploadTicketAttachment(selectedTicket.id, file);
         const newAttachment: Attachment = {
           id: Date.now().toString(),
           name: file.name,
           type: file.type,
           size: file.size,
-          url: e.target?.result as string,
-          uploadedAt: new Date().toLocaleString(),
+          url: downloadUrl,
+          uploadedAt: Timestamp.now(),
         };
-        setUploadedFiles([...uploadedFiles, newAttachment]);
-      };
-      reader.readAsDataURL(file);
+        setUploadedFiles(prev => [...prev, newAttachment]);
+      } catch (error) {
+        console.error('Failed to upload file:', error);
+      }
     });
 
     setFileInputKey(prev => prev + 1);
@@ -216,21 +214,42 @@ export default function AdminPortal() {
     { label: 'Total', value: tickets.length, icon: MessageSquare, color: 'text-blue-400' },
   ];
 
-  // Save tickets to localStorage whenever they change
+  // Subscribe to Firestore tickets and load support team members
   useEffect(() => {
-    if (typeof window !== 'undefined' && tickets.length > 0) {
-      localStorage.setItem('supportTickets', JSON.stringify(tickets));
-    }
-  }, [tickets]);
-
-  // Check authentication on mount
-  useEffect(() => {
+    // Check authentication first
     const currentUser = getCurrentUser();
     if (!currentUser || !currentUser.isSuperuser) {
       router.push('/portal/superuser-login');
-    } else {
-      setUser(currentUser);
-      setIsAuthorized(true);
+      return;
+    }
+    setUser(currentUser);
+    setIsAuthorized(true);
+
+    // Subscribe to tickets from Firestore
+    try {
+      const unsubscribe = subscribeToTickets((firebaseTickets: any[]) => {
+        const mapped = firebaseTickets.map((t: any) => ({
+          ...t,
+          createdAt: t.createdAt?.toDate?.()?.toLocaleString() || t.createdAt || '',
+          resolvedAt: t.resolvedAt?.toDate?.()?.toLocaleString() || t.resolvedAt,
+        }));
+        setTickets(mapped);
+        setIsLoadingTickets(false);
+      });
+
+      // Load support team members
+      getAllSupportTeam().then((members: any[]) => {
+        setSupportTeamMembers(members);
+      }).catch(() => {
+        console.error('Failed to load support team members');
+      });
+
+      return () => {
+        unsubscribe?.();
+      };
+    } catch (error) {
+      setIsLoadingTickets(false);
+      console.error('Failed to subscribe to tickets:', error);
     }
   }, [router]);
 
@@ -493,38 +512,33 @@ export default function AdminPortal() {
                   <div className="flex gap-2">
                     <select
                       value={selectedTicket.assignedTo || ''}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const selected = e.target.value;
                         if (selected) {
-                          const memberNames: { [key: string]: string } = {
-                            'support-1': 'John Support',
-                            'support-2': 'Maria Support',
-                            'support-3': 'Alex Chen',
-                            'support-4': 'Sarah Williams',
-                            'support-5': 'David Lee',
-                          };
-                          setTickets(
-                            tickets.map(t =>
-                              t.id === selectedTicket.id
-                                ? { ...t, assignedTo: selected, assignedToName: memberNames[selected] || '' }
-                                : t
-                            )
-                          );
-                          setSelectedTicket({
-                            ...selectedTicket,
-                            assignedTo: selected,
-                            assignedToName: memberNames[selected] || ''
-                          });
+                          const member = supportTeamMembers.find(m => m.id === selected);
+                          try {
+                            await updateTicket(selectedTicket.id, {
+                              assignedTo: selected,
+                              assignedToName: member?.name || '',
+                            });
+                            setSelectedTicket({
+                              ...selectedTicket,
+                              assignedTo: selected,
+                              assignedToName: member?.name || ''
+                            });
+                          } catch (error) {
+                            console.error('Failed to assign ticket:', error);
+                          }
                         }
                       }}
                       className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white focus:border-reset-green focus:outline-none text-sm"
                     >
                       <option value="">Select team member...</option>
-                      <option value="support-1">John Support (Support)</option>
-                      <option value="support-2">Maria Support (Support)</option>
-                      <option value="support-3">Alex Chen (Senior Support)</option>
-                      <option value="support-4">Sarah Williams (Support)</option>
-                      <option value="support-5">David Lee (Support Lead)</option>
+                      {supportTeamMembers.map(member => (
+                        <option key={member.id} value={member.id}>
+                          {member.name} ({member.role})
+                        </option>
+                      ))}
                     </select>
                   </div>
                   {selectedTicket.assignedTo && (
