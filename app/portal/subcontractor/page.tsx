@@ -6,6 +6,7 @@ import { MapPin, DollarSign, Camera, Clock, LogOut, User, TrendingUp, MessageSqu
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout, getUserProfile } from '@/lib/auth';
+import { uploadBeforeAfterPhoto } from '@/lib/storage';
 
 interface Notification {
   id: string;
@@ -326,32 +327,12 @@ export default function SubcontractorPortal() {
     updateTaskUploadState(taskId, { uploading: true });
 
     try {
-      const formData = new FormData();
-      formData.append('file', state.beforeFile);
-      formData.append('folder', `task-${taskId}`);
+      const jobId = `job-${Date.now()}`;
 
-      const beforeResponse = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const beforeUrl = await uploadBeforeAfterPhoto(jobId, taskId, 'before', state.beforeFile);
+      const afterUrl = await uploadBeforeAfterPhoto(jobId, taskId, 'after', state.afterFile);
 
-      if (!beforeResponse.ok) throw new Error('Before photo upload failed');
-
-      const formData2 = new FormData();
-      formData2.append('file', state.afterFile);
-      formData2.append('folder', `task-${taskId}`);
-
-      const afterResponse = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData2,
-      });
-
-      if (!afterResponse.ok) throw new Error('After photo upload failed');
-
-      const beforeData = await beforeResponse.json();
-      const afterData = await afterResponse.json();
-
-      handleAddPhotoAndComment(taskId, beforeData.path, afterData.path, state.photoComments);
+      handleAddPhotoAndComment(taskId, beforeUrl, afterUrl, state.photoComments);
 
       updateTaskUploadState(taskId, {
         selectedTaskId: null,
