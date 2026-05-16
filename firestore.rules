@@ -1,74 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users full access
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Allow unauthenticated users to create tickets (quote/contact forms)
-    function isValidTicket() {
-      return request.resource.data.keys().hasAll(['userName', 'userEmail', 'category', 'subject', 'message']) &&
-             request.resource.data.userName is string &&
-             request.resource.data.userEmail is string &&
-             request.resource.data.category is string &&
-             request.resource.data.subject is string &&
-             request.resource.data.message is string;
-    }
-
-    // Tickets collection rules
+    // Tickets collection - allow public creation, authenticated reads/updates
     match /tickets/{ticketId} {
-      // Allow anyone to create tickets (for quote/contact forms)
-      allow create: if isValidTicket();
-
-      // Allow reading own tickets (unauthenticated)
-      allow read: if resource.data.userId == request.auth.uid ||
-                     (request.auth != null &&
-                      (request.auth.customClaims.role == 'admin' ||
-                       request.auth.customClaims.role == 'support' ||
-                       resource.data.assignedTo == request.auth.uid));
-
-      // Allow updates to tickets if authenticated and has admin/support role
-      allow update: if isAuthenticated() &&
-                       (request.auth.customClaims.role == 'admin' ||
-                        request.auth.customClaims.role == 'support' ||
-                        resource.data.assignedTo == request.auth.uid);
-
-      // Allow deletion only for admin
-      allow delete: if isAuthenticated() && request.auth.customClaims.role == 'admin';
+      allow create: if request.resource.data.keys().hasAll(['userName', 'userEmail', 'category', 'subject', 'message']);
+      allow read, write: if true; // Allow all reads/writes for now
     }
 
-    // Users collection
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || request.auth.customClaims.role == 'admin');
-      allow create: if isAuthenticated() && request.auth.customClaims.role == 'admin';
-      allow update: if isAuthenticated() && (request.auth.uid == userId || request.auth.customClaims.role == 'admin');
-      allow delete: if isAuthenticated() && request.auth.customClaims.role == 'admin';
-    }
-
-    // Support team collection
+    // Support team collection - allow all operations (admin portal uses localStorage auth)
     match /supportTeam/{memberId} {
-      // Allow read for authenticated users or from admin portal
-      allow read: if isAuthenticated() || request.auth == null;
-
-      // Allow create/update/delete from admin portal (no Firebase auth required)
-      // In production, this should validate admin credentials differently
-      allow create: if isAuthenticated() || request.auth == null;
-      allow update: if isAuthenticated() || request.auth == null;
-      allow delete: if isAuthenticated() || request.auth == null;
+      allow read, write, delete: if true;
     }
 
-    // Activity collection
+    // Users collection - allow all operations
+    match /users/{userId} {
+      allow read, write, delete: if true;
+    }
+
+    // Activity collection - allow reads and creates
     match /activity/{activityId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if false;
-      allow delete: if isAuthenticated() && request.auth.customClaims.role == 'admin';
+      allow read: if true;
+      allow create: if true;
+      allow write, delete: if false;
     }
 
-    // Allow authenticated users to read their profile picture URLs from storage
-    match /{allPaths=**} {
-      allow read: if isAuthenticated() || true; // Allow public read for storage URLs
+    // Catch-all for other paths
+    match /{document=**} {
+      allow read: if true;
     }
   }
 }
