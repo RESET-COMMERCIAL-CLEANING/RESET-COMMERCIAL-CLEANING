@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Loader } from 'lucide-react';
 import { useState } from 'react';
 import { Toast, useToast } from '@/components/Toast';
-import { collection, addDoc, query, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function QuotePage() {
@@ -31,22 +31,11 @@ export default function QuotePage() {
     });
   };
 
-  const generateTicketNumber = async (): Promise<string> => {
-    if (!db) {
-      throw new Error('Firebase not initialized');
-    }
-
-    const ticketsRef = collection(db, 'tickets');
-    const q = query(ticketsRef, orderBy('createdAt', 'desc'), limit(1));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      return 'TKT-001';
-    }
-
-    const lastDoc = snapshot.docs[0];
-    const lastNumber = parseInt(lastDoc.id.split('-')[1] || '0');
-    return `TKT-${String(lastNumber + 1).padStart(3, '0')}`;
+  const generateTicketNumber = (): string => {
+    // Generate ticket number from timestamp (simpler, no DB query needed)
+    const timestamp = Date.now();
+    const randomPart = Math.floor(Math.random() * 9000) + 1000;
+    return `TKT-${timestamp.toString().slice(-6)}${randomPart.toString().slice(-2)}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,23 +44,24 @@ export default function QuotePage() {
 
     try {
       if (!db) {
-        console.error('Firebase not initialized');
-        addToast('Firebase not initialized. Please check your configuration.', 'error', 8000);
-        setIsLoading(false);
+        console.error('🔴 Firebase db is null - not initialized');
+        addToast('Firebase not initialized. Refreshing...', 'error', 3000);
+        setTimeout(() => window.location.reload(), 1000);
         return;
       }
 
-      console.log('Starting ticket creation...');
-      const ticketNumber = await generateTicketNumber();
-      console.log('Generated ticket number:', ticketNumber);
+      console.log('✅ Starting quote ticket creation...');
+      const newTicketNumber = generateTicketNumber();
+      console.log('✅ Generated ticket number:', newTicketNumber);
 
       const ticketsRef = collection(db, 'tickets');
 
       const ticketData = {
-        ticketNumber,
+        ticketNumber: newTicketNumber,
         userId: `client-${Date.now()}`,
         userName: formData.company,
         userEmail: formData.email,
+        userPhone: formData.phone,
         userType: 'client',
         category: formData.serviceType,
         subject: `Quote Request - ${formData.serviceType}`,
@@ -82,25 +72,28 @@ export default function QuotePage() {
         attachments: [],
       };
 
-      console.log('Submitting ticket data:', ticketData);
+      console.log('✅ Submitting to Firestore:', ticketData);
       const docRef = await addDoc(ticketsRef, ticketData);
-      console.log('Ticket created successfully with ID:', docRef.id);
+      console.log('✅ Ticket created successfully with ID:', docRef.id);
 
-      setTicketNumber(ticketNumber);
+      setTicketNumber(newTicketNumber);
       setIsLoading(false);
       setSubmitted(true);
       addToast('Quote request submitted successfully!', 'success', 6000);
     } catch (error: any) {
-      console.error('Failed to create quote ticket:', error);
+      console.error('❌ Failed to create quote ticket');
+      console.error('Error:', error);
       console.error('Error message:', error.message);
       console.error('Error code:', error.code);
 
       let errorMessage = 'Failed to submit quote. Please try again.';
 
       if (error.code === 'permission-denied') {
-        errorMessage = 'Permission denied. Please check Firestore security rules.';
-      } else if (error.message?.includes('not initialized')) {
-        errorMessage = 'Firebase configuration missing. Please refresh and try again.';
+        errorMessage = 'Permission denied. Firestore rules may need to be deployed.';
+      } else if (error.message?.includes('Failed to get')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.code === 'unavailable') {
+        errorMessage = 'Firebase service unavailable. Please try again in a moment.';
       }
 
       addToast(errorMessage, 'error', 8000);

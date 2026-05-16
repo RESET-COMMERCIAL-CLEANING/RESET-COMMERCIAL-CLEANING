@@ -27,27 +27,36 @@ export default function ContactPage() {
     });
   };
 
+  const generateTicketNumber = (): string => {
+    const timestamp = Date.now();
+    const randomPart = Math.floor(Math.random() * 9000) + 1000;
+    return `TKT-${timestamp.toString().slice(-6)}${randomPart.toString().slice(-2)}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       if (!db) {
-        console.error('Firebase not initialized');
-        addToast('Firebase not initialized. Please check your configuration.', 'error', 8000);
-        setIsLoading(false);
+        console.error('🔴 Firebase db is null - not initialized');
+        addToast('Firebase not initialized. Refreshing...', 'error', 3000);
+        setTimeout(() => window.location.reload(), 1000);
         return;
       }
 
-      console.log('Starting contact ticket creation...');
+      console.log('✅ Starting contact ticket creation...');
+      const newTicketNumber = generateTicketNumber();
+      console.log('✅ Generated ticket number:', newTicketNumber);
+
       const ticketsRef = collection(db, 'tickets');
-      const newTicketNumber = `TKT-${Date.now().toString().slice(-6)}`;
 
       const ticketData = {
         ticketNumber: newTicketNumber,
         userId: `client-${Date.now()}`,
         userName: formData.name,
         userEmail: formData.email,
+        userPhone: formData.phone,
         userType: 'client',
         category: 'general-inquiry',
         subject: `Contact Request from ${formData.name}`,
@@ -58,9 +67,9 @@ export default function ContactPage() {
         attachments: [],
       };
 
-      console.log('Submitting contact data:', ticketData);
+      console.log('✅ Submitting to Firestore:', ticketData);
       const docRef = await addDoc(ticketsRef, ticketData);
-      console.log('Contact ticket created successfully with ID:', docRef.id);
+      console.log('✅ Contact ticket created successfully with ID:', docRef.id);
 
       setTicketNumber(newTicketNumber);
       setIsLoading(false);
@@ -68,16 +77,19 @@ export default function ContactPage() {
       setFormData({ name: '', email: '', phone: '', message: '' });
       addToast('Message sent successfully!', 'success', 6000);
     } catch (error: any) {
-      console.error('Failed to create contact ticket:', error);
+      console.error('❌ Failed to create contact ticket');
+      console.error('Error:', error);
       console.error('Error message:', error.message);
       console.error('Error code:', error.code);
 
       let errorMessage = 'Failed to send message. Please try again.';
 
       if (error.code === 'permission-denied') {
-        errorMessage = 'Permission denied. Please check Firestore security rules.';
-      } else if (error.message?.includes('not initialized')) {
-        errorMessage = 'Firebase configuration missing. Please refresh and try again.';
+        errorMessage = 'Permission denied. Firestore rules may need to be deployed.';
+      } else if (error.message?.includes('Failed to get')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.code === 'unavailable') {
+        errorMessage = 'Firebase service unavailable. Please try again in a moment.';
       }
 
       addToast(errorMessage, 'error', 8000);
