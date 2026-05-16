@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
 import { useState } from 'react';
+import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -20,10 +21,30 @@ export default function ContactPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setFormData({ name: '', email: '', phone: '', message: '' });
+
+    try {
+      const ticketNumber = await generateTicketNumber();
+      await createTicket({
+        ticketNumber,
+        userId: `client-${Date.now()}`,
+        userName: formData.name,
+        userEmail: formData.email,
+        userType: 'client',
+        category: 'general-inquiry',
+        subject: `Contact Request from ${formData.name}`,
+        message: formData.message,
+        status: 'assigned',
+        priority: 'low',
+      });
+
+      setSubmitted(true);
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (error) {
+      console.error('Failed to create contact ticket:', error);
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   return (

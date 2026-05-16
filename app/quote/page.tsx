@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useState } from 'react';
+import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
 
 export default function QuotePage() {
   const [formData, setFormData] = useState({
@@ -25,9 +26,29 @@ export default function QuotePage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+
+    try {
+      const ticketNumber = await generateTicketNumber();
+      await createTicket({
+        ticketNumber,
+        userId: `client-${Date.now()}`,
+        userName: formData.company,
+        userEmail: formData.email,
+        userType: 'client',
+        category: formData.serviceType,
+        subject: `Quote Request - ${formData.serviceType}`,
+        message: `Company: ${formData.company}\nPhone: ${formData.phone}\nSquare Footage: ${formData.squareFeet}\nFrequency: ${formData.frequency}\n\nAdditional Details:\n${formData.message}`,
+        status: 'assigned',
+        priority: 'medium',
+      });
+
+      setSubmitted(true);
+    } catch (error) {
+      console.error('Failed to create quote ticket:', error);
+      alert('Failed to submit quote. Please try again.');
+    }
   };
 
   return (
