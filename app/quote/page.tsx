@@ -73,27 +73,50 @@ export default function QuotePage() {
       };
 
       console.log('✅ Submitting to Firestore:', ticketData);
-      const docRef = await addDoc(ticketsRef, ticketData);
-      console.log('✅ Ticket created successfully with ID:', docRef.id);
+      console.time('Firestore Write');
 
+      const docRef = await addDoc(ticketsRef, ticketData);
+
+      console.timeEnd('Firestore Write');
+      console.log('✅ Ticket created successfully with ID:', docRef.id);
+      console.log('✅ Document reference:', docRef);
+
+      console.log('Setting ticket number:', newTicketNumber);
       setTicketNumber(newTicketNumber);
+
+      console.log('Setting isLoading to false');
       setIsLoading(false);
+
+      console.log('Setting submitted to true');
       setSubmitted(true);
+
+      console.log('Adding toast notification');
       addToast('Quote request submitted successfully!', 'success', 6000);
+
+      console.log('✅ All state updates completed successfully');
     } catch (error: any) {
-      console.error('❌ Failed to create quote ticket');
-      console.error('Error:', error);
+      console.error('❌ CRITICAL ERROR in quote submission');
+      console.error('Error object:', error);
       console.error('Error message:', error.message);
       console.error('Error code:', error.code);
+      console.error('Full error stack:', error.stack);
 
       let errorMessage = 'Failed to submit quote. Please try again.';
 
       if (error.code === 'permission-denied') {
-        errorMessage = 'Permission denied. Firestore rules may need to be deployed.';
-      } else if (error.message?.includes('Failed to get')) {
-        errorMessage = 'Network error. Please check your connection and try again.';
+        console.error('❌ PERMISSION DENIED - Firestore rules are blocking the write');
+        errorMessage = 'Permission denied. Firestore rules may need to be deployed. Check Firebase console.';
+      } else if (error.code === 'unauthenticated') {
+        console.error('❌ UNAUTHENTICATED - User not authenticated');
+        errorMessage = 'Authentication required. Please refresh and try again.';
       } else if (error.code === 'unavailable') {
+        console.error('❌ SERVICE UNAVAILABLE - Firebase is down or unreachable');
         errorMessage = 'Firebase service unavailable. Please try again in a moment.';
+      } else if (error.code === 'internal') {
+        console.error('❌ INTERNAL ERROR - Firebase internal error');
+        errorMessage = 'Internal error. Please try again.';
+      } else {
+        console.error('❌ UNKNOWN ERROR:', error.code || 'unknown');
       }
 
       addToast(errorMessage, 'error', 8000);
