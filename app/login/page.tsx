@@ -70,7 +70,7 @@ export default function LoginPage() {
           addToast(`Welcome! Signed in as ${result.user.firstName} ${result.user.lastName}`, 'success', 3000);
 
           setTimeout(() => {
-            const portalUrl = result.user?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
+            const portalUrl = result.user?.role === 'client' ? '/portal/client' : '/portal/subcontractor';
             router.push(portalUrl);
           }, 1500);
         }
@@ -121,7 +121,7 @@ export default function LoginPage() {
       addToast(`Welcome! Signed in as ${userData.firstName} ${userData.lastName}`, 'success', 3000);
 
       setTimeout(() => {
-        const portalUrl = userData?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
+        const portalUrl = userData?.role === 'client' ? '/portal/client' : '/portal/subcontractor';
         console.log('🔀 Redirecting to:', portalUrl);
         router.push(portalUrl);
       }, 1500);
