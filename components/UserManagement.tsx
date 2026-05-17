@@ -103,12 +103,14 @@ export default function UserManagement() {
     try {
       const userId = `user-${Date.now()}`;
       const tempPassword = Math.random().toString(36).slice(-12);
+      const firstName = formData.firstName;
+      const lastName = formData.lastName;
 
       await createUser(userId, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        firstName,
+        lastName,
         email: formData.email,
-        phone: formData.phone,
+        phone: formData.phone || undefined,
         role: userRole,
         status: 'active',
         isVerified: true,
@@ -141,19 +143,21 @@ export default function UserManagement() {
       setModal({
         type: 'success',
         title: 'User Created Successfully',
-        message: `${formData.firstName} ${formData.lastName} has been created.\n\nTemporary Password:\n${tempPassword}\n\nClick "Copy to Clipboard" to copy the password.`,
+        message: `${firstName} ${lastName} has been created.\n\nTemporary Password:\n${tempPassword}\n\nClick "Copy to Clipboard" to copy the password.`,
         actionLabel: 'Copy to Clipboard',
         onConfirm: () => {
           navigator.clipboard.writeText(tempPassword);
           setModal({ type: null, title: '', message: '' });
         },
       });
-    } catch (error) {
-      console.error('Failed to create user:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to create user:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       setModal({
         type: 'alert',
         title: 'Error',
-        message: 'Failed to create user. Please try again.',
+        message: `Failed to create user: ${error.message || error.code || 'Unknown error'}`,
       });
     }
   };
@@ -170,12 +174,14 @@ export default function UserManagement() {
           await deleteUser(id);
           if (selectedUser?.id === id) setSelectedUser(null);
           setModal({ type: null, title: '', message: '' });
-        } catch (error) {
-          console.error('Failed to delete user:', error);
+        } catch (error: any) {
+          console.error('❌ Failed to delete user:', error);
+          console.error('Error code:', error.code);
+          console.error('Error message:', error.message);
           setModal({
             type: 'alert',
             title: 'Error',
-            message: 'Failed to delete user',
+            message: `Failed to delete user: ${error.message || error.code || 'Unknown error'}`,
           });
         }
       },
@@ -190,12 +196,14 @@ export default function UserManagement() {
         const updatedUser = users.find(u => u.id === id);
         if (updatedUser) setSelectedUser({ ...updatedUser, status: newStatus as 'active' | 'inactive' | 'pending' });
       }
-    } catch (error) {
-      console.error('Failed to toggle user status:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to toggle user status:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       setModal({
         type: 'alert',
         title: 'Error',
-        message: 'Failed to update user status',
+        message: `Failed to update user status: ${error.message || error.code || 'Unknown error'}`,
       });
     }
   };
@@ -216,12 +224,14 @@ export default function UserManagement() {
           },
         });
       }
-    } catch (error) {
-      console.error('Failed to reset password:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to reset password:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       setModal({
         type: 'alert',
         title: 'Error',
-        message: 'Failed to reset password',
+        message: `Failed to reset password: ${error.message || error.code || 'Unknown error'}`,
       });
     }
   };
