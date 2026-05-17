@@ -86,20 +86,27 @@ export default function SupportLogin() {
     setError('');
     setIsLoading(true);
 
-    if (!email.trim() || !password.trim()) {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
       setError('Please enter both email and password');
       setIsLoading(false);
       return;
     }
 
     try {
+      console.log('🔑 Login attempt for email:', trimmedEmail);
+
       // Query Firestore for support member with matching email
       const supportTeamRef = collection(db, 'supportTeam');
       const q = query(
         supportTeamRef,
-        where('email', '==', email.toLowerCase())
+        where('email', '==', trimmedEmail)
       );
       const snapshot = await getDocs(q);
+
+      console.log('📊 Query results:', snapshot.size, 'member(s) found');
 
       if (snapshot.empty) {
         setError('Invalid email or password');
@@ -110,17 +117,32 @@ export default function SupportLogin() {
       const member = snapshot.docs[0].data();
       const memberId = snapshot.docs[0].id;
 
+      console.log('👤 Member found in DB:', {
+        memberId,
+        email: member.email,
+        name: member.name,
+        hasTempPassword: !!member.tempPassword,
+        hasPassword: !!member.password,
+        requiresPasswordChange: member.requiresPasswordChange,
+      });
+
       // Check if password matches (either temp password or regular password)
-      const tempPasswordMatch = member.tempPassword && verifyPassword(password, member.tempPassword);
-      const passwordMatch = member.password && verifyPassword(password, member.password);
+      console.log('🔑 Checking password match...');
+      const tempPasswordMatch = member.tempPassword && verifyPassword(trimmedPassword, member.tempPassword);
+      console.log('📝 Temp password match:', tempPasswordMatch, 'Has temp password field:', !!member.tempPassword);
+
+      const passwordMatch = member.password && verifyPassword(trimmedPassword, member.password);
+      console.log('📝 Password match:', passwordMatch, 'Has password field:', !!member.password);
 
       if (!tempPasswordMatch && !passwordMatch) {
+        console.error('❌ Password verification failed for:', trimmedEmail);
+        console.log('Input password length:', trimmedPassword.length);
         setError('Invalid email or password');
         setIsLoading(false);
         return;
       }
 
-      console.log('🔐 Support member found:', {
+      console.log('🔐 Support member authenticated:', {
         name: member.name,
         email: member.email,
         requiresPasswordChange: member.requiresPasswordChange,

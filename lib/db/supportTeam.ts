@@ -53,6 +53,10 @@ export const createSupportMember = async (uid: string, data: Omit<SupportTeamMem
   // Auto-generate tempPassword if not provided
   const tempPassword = data.tempPassword || generateTempPassword();
 
+  console.log('🔐 Creating support member with tempPassword:');
+  console.log('   Plain tempPassword:', tempPassword);
+  console.log('   Length:', tempPassword.length);
+
   // Filter out undefined values (but keep password fields)
   const cleanData: any = {};
   Object.entries(data).forEach(([key, value]) => {
@@ -62,10 +66,16 @@ export const createSupportMember = async (uid: string, data: Omit<SupportTeamMem
   });
 
   // Encrypt passwords
+  const encryptedTempPassword = encryptPassword(tempPassword);
+  const encryptedPassword = encryptPassword(data.password || tempPassword);
+
+  console.log('🔒 Encrypted tempPassword length:', encryptedTempPassword.length);
+  console.log('🔒 Encrypted password length:', encryptedPassword.length);
+
   const encryptedData = {
     ...cleanData,
-    tempPassword: encryptPassword(tempPassword),
-    password: encryptPassword(data.password || tempPassword), // Use tempPassword as initial password if not provided
+    tempPassword: encryptedTempPassword,
+    password: encryptedPassword,
   };
 
   const newMember: SupportTeamMember = {
@@ -76,6 +86,13 @@ export const createSupportMember = async (uid: string, data: Omit<SupportTeamMem
   } as SupportTeamMember;
 
   await setDoc(doc(supportTeamCollection, uid), newMember);
+
+  console.log('✅ Support member created:', {
+    uid,
+    email: data.email,
+    name: data.name,
+    tempPasswordCreated: true,
+  });
 
   // Return with unencrypted tempPassword for display to superuser
   return {
