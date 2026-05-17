@@ -7,8 +7,8 @@ import { Menu, X, LogOut, User, Phone, MessageSquare, Edit } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation';
 import { logout } from '@/lib/auth';
 import { uploadProfilePicture } from '@/lib/storage';
-import { updateUser } from '@/lib/db/users';
-import { updateSupportMember } from '@/lib/db/supportTeam';
+import { updateUser, getUser } from '@/lib/db/users';
+import { updateSupportMember, getSupportTeamMember } from '@/lib/db/supportTeam';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -96,23 +96,51 @@ export function Navbar() {
   };
 
   const handleSaveProfile = async () => {
+    if (!loggedInUser?.id) {
+      console.error('❌ No logged in user');
+      return;
+    }
+
     try {
+      console.log('💾 Saving profile for user:', loggedInUser.id);
       setProfile(editProfile);
 
-      // Persist avatar to Firestore if it's a Firebase URL (not a blob URL)
-      if (loggedInUser?.id && editProfile.avatar && !editProfile.avatar.startsWith('blob:')) {
+      // Prepare update data
+      const updateData: any = {
+        ...(editProfile.name && { name: editProfile.name }),
+        ...(editProfile.email && { email: editProfile.email }),
+        ...(editProfile.phone && { phone: editProfile.phone }),
+        ...(editProfile.company && { company: editProfile.company }),
+        ...(editProfile.address && { address: editProfile.address }),
+        ...(editProfile.industry && { industry: editProfile.industry }),
+        ...(editProfile.squareFeet && { squareFeet: editProfile.squareFeet }),
+      };
+
+      // Add avatar if it's a Firebase URL (not a blob)
+      if (editProfile.avatar && !editProfile.avatar.startsWith('blob:')) {
         if (isSupportPortal) {
-          // Support member
-          await updateSupportMember(loggedInUser.id, { avatar: editProfile.avatar });
+          updateData.avatar = editProfile.avatar;
         } else {
-          // Regular user (client or subcontractor)
-          await updateUser(loggedInUser.id, { avatarUrl: editProfile.avatar });
+          updateData.avatarUrl = editProfile.avatar;
         }
       }
 
+      console.log('📝 Updating Firestore with:', updateData);
+
+      // Save to Firestore
+      if (isSupportPortal) {
+        // Support member
+        await updateSupportMember(loggedInUser.id, updateData);
+      } else {
+        // Regular user (client or subcontractor)
+        await updateUser(loggedInUser.id, updateData);
+      }
+
+      console.log('✅ Profile saved successfully');
       setShowProfileEdit(false);
     } catch (error) {
-      console.error('Failed to save profile:', error);
+      console.error('❌ Failed to save profile:', error);
+      alert('Failed to save profile. Please try again.');
     }
   };
 
@@ -228,8 +256,41 @@ export function Navbar() {
                       {/* Action Buttons */}
                       <div className="space-y-3">
                         <button
-                          onClick={() => {
-                            setEditProfile(loggedInUser || profile);
+                          onClick={async () => {
+                            if (!loggedInUser?.id) return;
+                            try {
+                              console.log('📂 Loading profile data from Firestore...');
+                              let fullUserData;
+                              if (isSupportPortal) {
+                                fullUserData = await getSupportTeamMember(loggedInUser.id);
+                              } else {
+                                fullUserData = await getUser(loggedInUser.id);
+                              }
+                              if (fullUserData) {
+                                console.log('✅ Profile data loaded');
+                                const dataToEdit = isSupportPortal
+                                  ? fullUserData
+                                  : {
+                                      name: `${fullUserData.firstName} ${fullUserData.lastName}`,
+                                      email: fullUserData.email,
+                                      phone: fullUserData.phone,
+                                      company: fullUserData.company,
+                                      address: fullUserData.address,
+                                      industry: fullUserData.industry,
+                                      squareFeet: fullUserData.squareFeet,
+                                      avatar: fullUserData.avatarUrl || '',
+                                    };
+                                setEditProfile(dataToEdit);
+                                setShowProfileEdit(true);
+                              } else {
+                                setEditProfile(loggedInUser || profile);
+                                setShowProfileEdit(true);
+                              }
+                            } catch (error) {
+                              console.error('❌ Failed to load profile data:', error);
+                              setEditProfile(loggedInUser || profile);
+                              setShowProfileEdit(true);
+                            }
                           }}
                           className="w-full py-2 text-sm text-white bg-reset-green/10 border border-reset-green rounded hover:bg-reset-green/20 transition-colors font-bold flex items-center justify-center gap-2"
                         >
@@ -412,9 +473,41 @@ export function Navbar() {
                       <p className="text-xs text-gray-400">{profile.industry}</p>
                     </div>
                     <button
-                      onClick={() => {
-                        setEditProfile(profile);
-                        setShowProfileEdit(true);
+                      onClick={async () => {
+                        if (!loggedInUser?.id) return;
+                        try {
+                          console.log('📂 Loading profile data from Firestore (mobile)...');
+                          let fullUserData;
+                          if (isSupportPortal) {
+                            fullUserData = await getSupportTeamMember(loggedInUser.id);
+                          } else {
+                            fullUserData = await getUser(loggedInUser.id);
+                          }
+                          if (fullUserData) {
+                            console.log('✅ Profile data loaded');
+                            const dataToEdit = isSupportPortal
+                              ? fullUserData
+                              : {
+                                  name: `${fullUserData.firstName} ${fullUserData.lastName}`,
+                                  email: fullUserData.email,
+                                  phone: fullUserData.phone,
+                                  company: fullUserData.company,
+                                  address: fullUserData.address,
+                                  industry: fullUserData.industry,
+                                  squareFeet: fullUserData.squareFeet,
+                                  avatar: fullUserData.avatarUrl || '',
+                                };
+                            setEditProfile(dataToEdit);
+                            setShowProfileEdit(true);
+                          } else {
+                            setEditProfile(loggedInUser || profile);
+                            setShowProfileEdit(true);
+                          }
+                        } catch (error) {
+                          console.error('❌ Failed to load profile data:', error);
+                          setEditProfile(loggedInUser || profile);
+                          setShowProfileEdit(true);
+                        }
                         setIsOpen(false);
                       }}
                       className="w-full py-2 text-sm text-white bg-reset-green/20 border border-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold mb-2"
