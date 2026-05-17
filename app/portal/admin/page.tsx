@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
+import { Toast, useToast } from '@/components/Toast';
 import { subscribeToTickets, updateTicket, createTicket, unassignTicket, resetAllTicketsToUnassigned, deleteAllTickets, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { subscribeToAllSupportTeam } from '@/lib/db/supportTeam';
@@ -37,6 +38,7 @@ interface SupportTicket {
 
 export default function AdminPortal() {
   const router = useRouter();
+  const { toasts, addToast, removeToast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -144,7 +146,7 @@ export default function AdminPortal() {
     e.preventDefault();
 
     if (!newTicketForm.userName.trim() || !newTicketForm.userEmail.trim() || !newTicketForm.subject.trim() || !newTicketForm.message.trim()) {
-      alert('Please fill in all required fields');
+      addToast('Please fill in all required fields', 'error', 3000);
       return;
     }
 
@@ -181,10 +183,10 @@ export default function AdminPortal() {
         sourceLocation: '',
       });
       setShowCreateTicket(false);
-      alert(`Ticket created successfully: ${ticket.ticketNumber}`);
+      addToast(`Ticket created successfully: ${ticket.ticketNumber}`, 'success', 3000);
     } catch (error) {
       console.error('❌ Failed to create ticket:', error);
-      alert('Failed to create ticket. Please try again.');
+      addToast('Failed to create ticket. Please try again.', 'error', 5000);
     }
   };
 
@@ -245,7 +247,7 @@ export default function AdminPortal() {
       setShowResponseForm(false);
     } catch (error) {
       console.error('❌ Failed to submit response:', error);
-      alert('Failed to submit response. Please try again.');
+      addToast('Failed to submit response. Please try again.', 'error', 5000);
     }
   };
 
@@ -270,9 +272,10 @@ export default function AdminPortal() {
 
       console.log('✅ Ticket resolved and logged');
       setSelectedTicket(null);
+      addToast('Ticket marked as resolved', 'success', 3000);
     } catch (error) {
       console.error('❌ Failed to resolve ticket:', error);
-      alert('Failed to resolve ticket. Please try again.');
+      addToast('Failed to resolve ticket. Please try again.', 'error', 5000);
     }
   };
 
@@ -386,7 +389,9 @@ export default function AdminPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-black pt-32 pb-20">
+    <>
+      <Toast toasts={toasts} onRemove={removeToast} />
+      <div className="min-h-screen bg-black pt-32 pb-20">
         <div className="container">
           {/* Header */}
           <motion.div
@@ -488,9 +493,9 @@ export default function AdminPortal() {
                   if (confirm('Reset all tickets to unassigned state?')) {
                     try {
                       await resetAllTicketsToUnassigned();
-                      alert('All tickets reset to unassigned');
+                      addToast('All tickets reset to unassigned', 'success', 3000);
                     } catch (error) {
-                      alert('Failed to reset tickets');
+                      addToast('Failed to reset tickets', 'error', 5000);
                     }
                   }
                 }}
@@ -503,9 +508,9 @@ export default function AdminPortal() {
                   if (confirm('Delete ALL tickets? This cannot be undone!')) {
                     try {
                       await deleteAllTickets();
-                      alert('All tickets deleted');
+                      addToast('All tickets deleted', 'success', 3000);
                     } catch (error) {
-                      alert('Failed to delete tickets');
+                      addToast('Failed to delete tickets', 'error', 5000);
                     }
                   }
                 }}
@@ -877,7 +882,7 @@ export default function AdminPortal() {
                             });
                           } catch (error) {
                             console.error('❌ Failed to assign ticket:', error);
-                            alert('Failed to assign ticket. Please try again.');
+                            addToast('Failed to assign ticket. Please try again.', 'error', 5000);
                           }
                       }}
                       className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white focus:border-reset-green focus:outline-none text-sm"
@@ -905,7 +910,7 @@ export default function AdminPortal() {
                             console.log('✅ Ticket unassigned');
                           } catch (error) {
                             console.error('❌ Failed to unassign ticket:', error);
-                            alert('Failed to unassign ticket. Please try again.');
+                            addToast('Failed to unassign ticket. Please try again.', 'error', 5000);
                           }
                         }}
                         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600/80 transition-colors font-bold text-sm"
@@ -1090,6 +1095,7 @@ export default function AdminPortal() {
           </motion.div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

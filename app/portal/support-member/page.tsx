@@ -123,7 +123,7 @@ export default function SupportMemberPortal() {
       setTimeout(() => setShowSuccessModal(false), 2000);
     } catch (error) {
       console.error('❌ Failed to submit response:', error);
-      alert('Failed to submit response. Please try again.');
+      console.error('Submit response failed - check browser console');
     }
   };
 
@@ -155,7 +155,7 @@ export default function SupportMemberPortal() {
       setTimeout(() => setShowSuccessModal(false), 3000);
     } catch (error) {
       console.error('Failed to request more info:', error);
-      alert('Failed to request more information. Please try again.');
+      console.error('Request more info failed - check browser console');
     }
   };
 
@@ -187,7 +187,7 @@ export default function SupportMemberPortal() {
       setTimeout(() => setShowSuccessModal(false), 2000);
     } catch (error) {
       console.error('Failed to resolve ticket:', error);
-      alert('Failed to resolve ticket. Please try again.');
+      console.error('Resolve ticket failed - check browser console');
     }
   };
 

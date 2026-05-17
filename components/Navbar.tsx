@@ -148,7 +148,7 @@ export function Navbar() {
       setShowProfileEdit(false);
     } catch (error) {
       console.error('❌ Failed to save profile:', error);
-      alert('Failed to save profile. Please try again.');
+      console.log('Profile save failed, please try again');
     }
   };
 
