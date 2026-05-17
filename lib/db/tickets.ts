@@ -7,6 +7,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   query,
   where,
   Timestamp,
@@ -109,4 +110,48 @@ export const generateTicketNumber = async (): Promise<string> => {
     })
   );
   return `TKT-${String(lastNumber + 1).padStart(3, '0')}`;
+};
+
+export const unassignTicket = async (ticketId: string): Promise<void> => {
+  const docRef = doc(ticketsCollection, ticketId);
+  await updateDoc(docRef, {
+    assignedTo: deleteField(),
+    assignedToName: deleteField(),
+    status: 'unassigned' as const,
+  });
+};
+
+export const resetAllTicketsToUnassigned = async (): Promise<void> => {
+  try {
+    const tickets = await getAllTickets();
+    console.log(`🔄 Resetting ${tickets.length} tickets to unassigned...`);
+
+    for (const ticket of tickets) {
+      const docRef = doc(ticketsCollection, ticket.id);
+      await updateDoc(docRef, {
+        assignedTo: deleteField(),
+        assignedToName: deleteField(),
+        status: 'unassigned' as const,
+      });
+    }
+    console.log('✅ All tickets reset to unassigned');
+  } catch (error) {
+    console.error('❌ Failed to reset tickets:', error);
+    throw error;
+  }
+};
+
+export const deleteAllTickets = async (): Promise<void> => {
+  try {
+    const tickets = await getAllTickets();
+    console.log(`🗑️ Deleting ${tickets.length} tickets...`);
+
+    for (const ticket of tickets) {
+      await deleteTicket(ticket.id);
+    }
+    console.log('✅ All tickets deleted');
+  } catch (error) {
+    console.error('❌ Failed to delete tickets:', error);
+    throw error;
+  }
 };

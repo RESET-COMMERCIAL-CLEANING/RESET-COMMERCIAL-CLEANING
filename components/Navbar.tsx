@@ -38,20 +38,25 @@ export function Navbar() {
     const userProfile = localStorage.getItem('userProfile');
     const supportMember = localStorage.getItem('supportMember');
 
-    if (currentUser) {
-      setLoggedInUser(JSON.parse(currentUser));
+    // Priority: support member > regular user > currentUser (admin/superuser)
+    if (supportMember && isSupportPortal) {
+      // Support member portal - use support member data
+      setLoggedInUser(JSON.parse(supportMember));
     } else if (userProfile) {
+      // Client or subcontractor - use user profile
       const profile = JSON.parse(userProfile);
       setLoggedInUser({
+        id: profile.id,
         name: `${profile.firstName} ${profile.lastName}`,
         email: profile.email,
         company: profile.company || 'N/A',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
+        avatar: profile.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
       });
-    } else if (supportMember) {
-      setLoggedInUser(JSON.parse(supportMember));
+    } else if (currentUser) {
+      // Superuser/Admin
+      setLoggedInUser(JSON.parse(currentUser));
     }
-  }, [pathname]);
+  }, [pathname, isSupportPortal]);
 
   // Click-outside detection for profile panel
   useEffect(() => {

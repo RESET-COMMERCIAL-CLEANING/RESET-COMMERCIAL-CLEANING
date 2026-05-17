@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
-import { subscribeToTickets, updateTicket, createTicket, type Attachment } from '@/lib/db/tickets';
+import { subscribeToTickets, updateTicket, createTicket, unassignTicket, resetAllTicketsToUnassigned, deleteAllTickets, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { subscribeToAllSupportTeam } from '@/lib/db/supportTeam';
 import { formatTicketResponseEmail, formatTicketAssignmentEmail, sendEmail } from '@/lib/email';
@@ -475,13 +475,43 @@ export default function AdminPortal() {
             </div>
 
             {/* Create Ticket Button */}
-            <div className="mb-8 flex gap-3">
+            <div className="mb-8 flex gap-3 flex-wrap">
               <button
                 onClick={() => setShowCreateTicket(!showCreateTicket)}
                 className="px-6 py-3 bg-reset-green text-black rounded-lg font-bold hover:bg-reset-green/80 transition-colors flex items-center gap-2"
               >
                 <Plus size={18} />
                 Create Ticket
+              </button>
+              <button
+                onClick={async () => {
+                  if (confirm('Reset all tickets to unassigned state?')) {
+                    try {
+                      await resetAllTicketsToUnassigned();
+                      alert('All tickets reset to unassigned');
+                    } catch (error) {
+                      alert('Failed to reset tickets');
+                    }
+                  }
+                }}
+                className="px-6 py-3 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-600/80 transition-colors text-sm"
+              >
+                Reset All to Unassigned
+              </button>
+              <button
+                onClick={async () => {
+                  if (confirm('Delete ALL tickets? This cannot be undone!')) {
+                    try {
+                      await deleteAllTickets();
+                      alert('All tickets deleted');
+                    } catch (error) {
+                      alert('Failed to delete tickets');
+                    }
+                  }
+                }}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-600/80 transition-colors text-sm"
+              >
+                Delete All Tickets
               </button>
             </div>
 
@@ -865,11 +895,7 @@ export default function AdminPortal() {
                           if (!selectedTicket?.id) return;
                           try {
                             console.log('🔄 Unassigning ticket from:', selectedTicket.assignedToName);
-                            await updateTicket(selectedTicket.id, {
-                              assignedTo: undefined,
-                              assignedToName: undefined,
-                              status: 'unassigned' as const,
-                            });
+                            await unassignTicket(selectedTicket.id);
                             setSelectedTicket({
                               ...selectedTicket,
                               assignedTo: undefined,
