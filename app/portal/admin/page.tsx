@@ -638,7 +638,6 @@ export default function AdminPortal() {
                             console.error('❌ Failed to assign ticket:', error);
                             alert('Failed to assign ticket. Please try again.');
                           }
-                        }
                       }}
                       className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white focus:border-reset-green focus:outline-none text-sm"
                     >
