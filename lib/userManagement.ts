@@ -33,62 +33,11 @@ export interface UserActivity {
   details?: string;
 }
 
-// Mock database of users
-const USERS_DATABASE: UserProfile[] = [
-  {
-    id: 'client-1',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    email: 'admin@techstartuphq.com',
-    phone: '+61 2 9234 5678',
-    role: 'client',
-    status: 'active',
-    company: 'Tech Startup HQ',
-    address: '123 Tech Street, Sydney NSW 2000',
-    industry: 'Technology',
-    squareFeet: '5,000 sqft',
-    createdAt: 'Jan 15, 2025',
-    lastLogin: 'Today',
-    isVerified: true,
-  },
-  {
-    id: 'sub-1',
-    firstName: 'John',
-    lastName: 'Smith',
-    email: 'john@elitecrew.com',
-    phone: '+61 4 1234 5678',
-    role: 'subcontractor',
-    status: 'active',
-    experience: '5+ years',
-    availability: 'Full-time',
-    certifications: 'IICRC Certified',
-    createdAt: 'Jan 10, 2025',
-    lastLogin: 'Yesterday',
-    isVerified: true,
-  },
-];
+// Mock database of users - now using Firestore instead
+const USERS_DATABASE: UserProfile[] = [];
 
-// User Activity Log
-const USER_ACTIVITY_LOG: UserActivity[] = [
-  {
-    id: 'activity-1',
-    userId: 'client-1',
-    action: 'Login',
-    timestamp: 'Mar 15, 2025, 9:30 AM',
-  },
-  {
-    id: 'activity-2',
-    userId: 'client-1',
-    action: 'Downloaded Report',
-    timestamp: 'Mar 15, 2025, 9:45 AM',
-  },
-  {
-    id: 'activity-3',
-    userId: 'sub-1',
-    action: 'Accepted Job',
-    timestamp: 'Mar 14, 2025, 2:15 PM',
-  },
-];
+// User Activity Log - now using Firestore instead
+const USER_ACTIVITY_LOG: UserActivity[] = [];
 
 // Generate random password
 export const generateTempPassword = (): string => {

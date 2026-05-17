@@ -24,6 +24,7 @@ export interface SupportTeamMember {
   phone?: string;
   avatar?: string;
   bio?: string;
+  requiresPasswordChange?: boolean;
 }
 
 const supportTeamCollection = collection(db, 'supportTeam');
@@ -50,6 +51,7 @@ export const createSupportMember = async (uid: string, data: Omit<SupportTeamMem
     ...data,
     id: uid,
     joinedDate: Timestamp.now(),
+    requiresPasswordChange: true,
   };
   await setDoc(doc(supportTeamCollection, uid), newMember);
   return newMember;

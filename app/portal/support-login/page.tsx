@@ -5,8 +5,9 @@ import { LogIn, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '@/lib/auth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import PasswordChange from '@/components/PasswordChange';
 
 export default function SupportLogin() {
   const router = useRouter();
@@ -14,11 +15,45 @@ export default function SupportLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [memberData, setMemberData] = useState<any>(null);
 
   // Clear any existing session on page load
   useEffect(() => {
     logout();
   }, []);
+
+  const handlePasswordChanged = async (newPassword: string) => {
+    if (!memberData) return;
+
+    setIsLoading(true);
+    try {
+      // Update password in Firestore and mark password change as complete
+      const memberRef = doc(db, 'supportTeam', memberData.id);
+      await updateDoc(memberRef, {
+        password: newPassword,
+        requiresPasswordChange: false
+      });
+
+      // Complete login with new password
+      localStorage.setItem(
+        'supportMember',
+        JSON.stringify({
+          id: memberData.id,
+          name: memberData.name,
+          email: memberData.email,
+          role: memberData.role,
+          username: memberData.username,
+        })
+      );
+
+      router.push('/portal/support-member');
+    } catch (error) {
+      console.error('Failed to update password:', error);
+      setError('Failed to update password. Please try again.');
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,19 +85,25 @@ export default function SupportLogin() {
       const member = snapshot.docs[0].data();
       const memberId = snapshot.docs[0].id;
 
-      // Store member in localStorage
-      localStorage.setItem(
-        'supportMember',
-        JSON.stringify({
-          id: memberId,
-          name: member.name,
-          email: member.email,
-          role: member.role,
-          username: member.username,
-        })
-      );
-
-      router.push('/portal/support-member');
+      // Check if password change is required (first login)
+      if (member.requiresPasswordChange) {
+        setMemberData({ ...member, id: memberId });
+        setShowPasswordChange(true);
+        setIsLoading(false);
+      } else {
+        // Complete login
+        localStorage.setItem(
+          'supportMember',
+          JSON.stringify({
+            id: memberId,
+            name: member.name,
+            email: member.email,
+            role: member.role,
+            username: member.username,
+          })
+        );
+        router.push('/portal/support-member');
+      }
     } catch (error) {
       console.error('Login error:', error);
       setError('Login failed. Please try again.');
@@ -92,19 +133,27 @@ export default function SupportLogin() {
 
         {/* Form Card */}
         <div className="glass border border-reset-green/20 p-8 space-y-6">
-          {/* Error Message */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="p-4 bg-red-600/20 border border-red-500/30 rounded-lg flex items-start gap-3"
-            >
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-300">{error}</p>
-            </motion.div>
-          )}
+          {showPasswordChange && memberData ? (
+            <PasswordChange
+              tempPassword={password}
+              onPasswordChanged={handlePasswordChanged}
+              isLoading={isLoading}
+            />
+          ) : (
+            <>
+              {/* Error Message */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-4 bg-red-600/20 border border-red-500/30 rounded-lg flex items-start gap-3"
+                >
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-300">{error}</p>
+                </motion.div>
+              )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
             {/* Username Input */}
             <div>
               <label className="block text-sm font-bold text-gray-300 mb-2">
@@ -155,37 +204,39 @@ export default function SupportLogin() {
             </button>
           </form>
 
-          {/* Demo Info */}
-          <div className="p-4 glass border border-reset-green/20 max-h-64 overflow-y-auto">
-            <p className="text-xs text-gray-400 mb-3 font-bold">DEMO CREDENTIALS (5 TEAM MEMBERS):</p>
-            <div className="space-y-3 text-xs text-gray-400">
-              <div>
-                <p className="text-gray-300 font-bold mb-1">👤 John Support (Support)</p>
-                <p>Username: <span className="text-reset-green">john.support</span></p>
-                <p>Password: <span className="text-reset-green">Support@123!</span></p>
+              {/* Demo Info */}
+              <div className="p-4 glass border border-reset-green/20 max-h-64 overflow-y-auto">
+                <p className="text-xs text-gray-400 mb-3 font-bold">DEMO CREDENTIALS (5 TEAM MEMBERS):</p>
+                <div className="space-y-3 text-xs text-gray-400">
+                  <div>
+                    <p className="text-gray-300 font-bold mb-1">👤 John Support (Support)</p>
+                    <p>Username: <span className="text-reset-green">john.support</span></p>
+                    <p>Password: <span className="text-reset-green">Support@123!</span></p>
+                  </div>
+                  <div>
+                    <p className="text-gray-300 font-bold mb-1">👤 Maria Support (Support)</p>
+                    <p>Username: <span className="text-reset-green">maria.support</span></p>
+                    <p>Password: <span className="text-reset-green">Support@456!</span></p>
+                  </div>
+                  <div>
+                    <p className="text-gray-300 font-bold mb-1">👤 Alex Chen (Senior Support)</p>
+                    <p>Username: <span className="text-reset-green">alex.chen</span></p>
+                    <p>Password: <span className="text-reset-green">Support@789!</span></p>
+                  </div>
+                  <div>
+                    <p className="text-gray-300 font-bold mb-1">👤 Sarah Williams (Support)</p>
+                    <p>Username: <span className="text-reset-green">sarah.williams</span></p>
+                    <p>Password: <span className="text-reset-green">Support@234!</span></p>
+                  </div>
+                  <div>
+                    <p className="text-gray-300 font-bold mb-1">👤 David Lee (Support Lead)</p>
+                    <p>Username: <span className="text-reset-green">david.lee</span></p>
+                    <p>Password: <span className="text-reset-green">Support@567!</span></p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-300 font-bold mb-1">👤 Maria Support (Support)</p>
-                <p>Username: <span className="text-reset-green">maria.support</span></p>
-                <p>Password: <span className="text-reset-green">Support@456!</span></p>
-              </div>
-              <div>
-                <p className="text-gray-300 font-bold mb-1">👤 Alex Chen (Senior Support)</p>
-                <p>Username: <span className="text-reset-green">alex.chen</span></p>
-                <p>Password: <span className="text-reset-green">Support@789!</span></p>
-              </div>
-              <div>
-                <p className="text-gray-300 font-bold mb-1">👤 Sarah Williams (Support)</p>
-                <p>Username: <span className="text-reset-green">sarah.williams</span></p>
-                <p>Password: <span className="text-reset-green">Support@234!</span></p>
-              </div>
-              <div>
-                <p className="text-gray-300 font-bold mb-1">👤 David Lee (Support Lead)</p>
-                <p>Username: <span className="text-reset-green">david.lee</span></p>
-                <p>Password: <span className="text-reset-green">Support@567!</span></p>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
         {/* Info */}

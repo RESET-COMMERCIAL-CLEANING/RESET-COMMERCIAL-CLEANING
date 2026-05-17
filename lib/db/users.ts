@@ -32,7 +32,9 @@ export interface UserProfile {
   avatarUrl?: string;
   isVerified: boolean;
   tempPassword?: string;
+  password?: string;
   passwordChangedAt?: string;
+  requiresPasswordChange?: boolean;
 }
 
 const usersCollection = collection(db, 'users');
@@ -59,6 +61,7 @@ export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'cr
     ...data,
     id: uid,
     createdAt: Timestamp.now(),
+    requiresPasswordChange: true,
   };
   await setDoc(doc(usersCollection, uid), newUser);
   return newUser;

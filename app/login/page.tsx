@@ -7,17 +7,22 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Toast, useToast } from '@/components/Toast';
 import { loginUser } from '@/lib/auth';
+import PasswordChange from '@/components/PasswordChange';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function LoginPage() {
   const router = useRouter();
   const { toasts, addToast, removeToast } = useToast();
-  const [step, setStep] = useState<'role' | 'email' | 'password' | 'success'>('role');
+  const [step, setStep] = useState<'role' | 'email' | 'password' | 'success' | 'changePassword'>('role');
   const [role, setRole] = useState<'client' | 'subcontractor' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [email_error, setEmailError] = useState('');
   const [password_error, setPasswordError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
 
   const handleRoleSelect = (selected: 'client' | 'subcontractor') => {
     setRole(selected);
@@ -48,13 +53,20 @@ export default function LoginPage() {
       const result = await loginUser(email, password);
 
       if (result.success && result.user) {
-        setStep('success');
-        addToast(`Welcome! Signed in as ${result.user.firstName} ${result.user.lastName}`, 'success', 3000);
+        // Check if password change is required
+        if (result.user.requiresPasswordChange) {
+          setUserData(result.user);
+          setShowPasswordChange(true);
+          setIsLoading(false);
+        } else {
+          setStep('success');
+          addToast(`Welcome! Signed in as ${result.user.firstName} ${result.user.lastName}`, 'success', 3000);
 
-        setTimeout(() => {
-          const portalUrl = result.user?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
-          router.push(portalUrl);
-        }, 1500);
+          setTimeout(() => {
+            const portalUrl = result.user?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
+            router.push(portalUrl);
+          }, 1500);
+        }
       } else {
         setPasswordError(result.error || 'Login failed. Please try again.');
         addToast(result.error || 'Login failed. Please try again.', 'error', 5000);
@@ -64,6 +76,33 @@ export default function LoginPage() {
       console.error('Login error:', error);
       setPasswordError('Login failed. Please try again.');
       addToast('Login failed. Please try again.', 'error', 5000);
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChanged = async (newPassword: string) => {
+    if (!userData) return;
+
+    setIsLoading(true);
+    try {
+      // Update password in Firestore
+      const userRef = doc(db, 'users', userData.id);
+      await updateDoc(userRef, {
+        password: newPassword,
+        requiresPasswordChange: false
+      });
+
+      // Complete login
+      setStep('success');
+      addToast(`Welcome! Signed in as ${userData.firstName} ${userData.lastName}`, 'success', 3000);
+
+      setTimeout(() => {
+        const portalUrl = userData?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
+        router.push(portalUrl);
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to update password:', error);
+      setPasswordError('Failed to update password. Please try again.');
       setIsLoading(false);
     }
   };
@@ -192,61 +231,71 @@ export default function LoginPage() {
             )}
 
             {step === 'password' && (
-              <form onSubmit={handlePasswordSubmit}>
-                <h2 className="text-2xl font-bold text-white mb-2">Enter your password</h2>
-                <p className="text-gray-400 mb-6 text-sm">{email}</p>
-
-                {password_error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg flex gap-2"
-                  >
-                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-red-400 text-sm">{password_error}</p>
-                  </motion.div>
-                )}
-
-                <div>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setPasswordError('');
-                    }}
-                    placeholder="••••••••"
-                    className="w-full px-5 py-4 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all text-lg"
-                    autoFocus
-                    disabled={isLoading}
+              <>
+                {showPasswordChange && userData ? (
+                  <PasswordChange
+                    tempPassword={password}
+                    onPasswordChanged={handlePasswordChanged}
+                    isLoading={isLoading}
                   />
-                </div>
+                ) : (
+                  <form onSubmit={handlePasswordSubmit}>
+                    <h2 className="text-2xl font-bold text-white mb-2">Enter your password</h2>
+                    <p className="text-gray-400 mb-6 text-sm">{email}</p>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full mt-6 py-4 bg-reset-green text-black font-bold rounded-lg hover:bg-opacity-80 transition-all glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="animate-spin inline-block mr-2">⏳</span>
-                      Signing in...
-                    </>
-                  ) : (
-                    <>
-                      Sign In <ArrowRight className="inline ml-2" size={18} />
-                    </>
-                  )}
-                </button>
+                    {password_error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg flex gap-2"
+                      >
+                        <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-red-400 text-sm">{password_error}</p>
+                      </motion.div>
+                    )}
 
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="block text-center text-reset-green text-sm font-bold mt-4 hover:underline w-full"
-                >
-                  ← Back
-                </button>
-              </form>
+                    <div>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setPasswordError('');
+                        }}
+                        placeholder="••••••••"
+                        className="w-full px-5 py-4 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none focus:ring-1 focus:ring-reset-green/50 transition-all text-lg"
+                        autoFocus
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full mt-6 py-4 bg-reset-green text-black font-bold rounded-lg hover:bg-opacity-80 transition-all glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="animate-spin inline-block mr-2">⏳</span>
+                          Signing in...
+                        </>
+                      ) : (
+                        <>
+                          Sign In <ArrowRight className="inline ml-2" size={18} />
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleBack}
+                      className="block text-center text-reset-green text-sm font-bold mt-4 hover:underline w-full"
+                    >
+                      ← Back
+                    </button>
+                  </form>
+                )}
+              </>
             )}
 
             {step === 'success' && (

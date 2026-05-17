@@ -92,7 +92,7 @@ export const addSuperuser = (user: Omit<User, 'role'> & { role: 'superuser' | 'a
 };
 
 // Login regular user (client or subcontractor)
-// Validates email and temporary password - uses Firestore
+// Validates email and password - uses Firestore
 export const loginUser = async (email: string, password: string): Promise<{ success: boolean; user?: UserProfile; error?: string }> => {
   try {
     // Import here to avoid circular dependencies
@@ -105,8 +105,9 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
       return { success: false, error: 'Email not found. Please check your email address.' };
     }
 
-    // Check if password matches the temporary password
-    if (user.tempPassword !== password) {
+    // Check if password matches either the temporary password or the actual password
+    const passwordMatch = user.tempPassword === password || user.password === password;
+    if (!passwordMatch) {
       return { success: false, error: 'Invalid password. Please check your credentials.' };
     }
 
