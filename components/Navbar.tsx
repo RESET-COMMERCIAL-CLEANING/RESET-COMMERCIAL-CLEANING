@@ -164,23 +164,25 @@ export function Navbar() {
           </div>
         )}
 
-        {/* CTA Buttons / Profile Panel */}
-        {!isAuthenticated && !isSupportLogin ? (
-          <div className="hidden md:flex items-center gap-4">
-            <Link
-              href="/login"
-              className="px-4 py-2 rounded-lg border border-reset-green text-reset-green font-semibold hover:bg-reset-green/10 transition-all duration-300"
-            >
-              Login
-            </Link>
-            <Link
-              href="/signup"
-              className="px-6 py-2 rounded-lg bg-reset-green text-black font-bold hover:bg-opacity-80 transition-all duration-300 glow-green-hover"
-            >
-              Sign Up
-            </Link>
-          </div>
-        ) : (
+        {/* CTA Buttons / Profile Panel - Hide everything on support-login */}
+        {!isSupportLogin && (
+          <>
+            {!isAuthenticated ? (
+              <div className="hidden md:flex items-center gap-4">
+                <Link
+                  href="/login"
+                  className="px-4 py-2 rounded-lg border border-reset-green text-reset-green font-semibold hover:bg-reset-green/10 transition-all duration-300"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
+                  className="px-6 py-2 rounded-lg bg-reset-green text-black font-bold hover:bg-opacity-80 transition-all duration-300 glow-green-hover"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            ) : (
           <div className="flex items-center gap-2 relative">
             <button
               ref={profileButtonRef}
@@ -340,6 +342,8 @@ export function Navbar() {
               )}
             </AnimatePresence>
           </div>
+            )}
+          </>
         )}
 
         {/* Mobile/Tablet Menu Button - Only show on non-portal pages */}
@@ -378,24 +382,26 @@ export function Navbar() {
                 </Link>
               ))}
 
-              {!isAuthenticated && !isSupportLogin ? (
+              {!isSupportLogin && (
                 <>
-                  <Link
-                    href="/login"
-                    className="px-6 py-2 rounded-lg border border-reset-green text-reset-green font-bold text-center"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="px-6 py-2 rounded-lg bg-reset-green text-black font-bold text-center"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              ) : (
+                  {!isAuthenticated ? (
+                    <>
+                      <Link
+                        href="/login"
+                        className="px-6 py-2 rounded-lg border border-reset-green text-reset-green font-bold text-center"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        href="/signup"
+                        className="px-6 py-2 rounded-lg bg-reset-green text-black font-bold text-center"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        Sign Up
+                      </Link>
+                    </>
+                  ) : (
                 <>
                   <div className="bg-reset-green/10 border border-reset-green/20 rounded-lg p-4 mt-4">
                     <div className="text-center mb-4">
@@ -434,6 +440,8 @@ export function Navbar() {
                       Logout
                     </Link>
                   </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
