@@ -27,17 +27,10 @@ export function Navbar() {
   const isAdminPortal = pathname.includes('/portal/admin') || pathname.includes('/portal/superuser-login');
   const isSupportPortal = pathname.includes('/portal/support-member');
   const isSupportLogin = pathname.includes('/portal/support-login');
-  const isLoginPage = pathname.includes('/login') || pathname.includes('/superuser-login') || pathname.includes('/support-login');
-  const isAuthenticated = isPortalPage && loggedInUser && !isLoginPage;
+  const isAuthenticated = isPortalPage && loggedInUser;
 
   // Get logged-in user from localStorage
   useEffect(() => {
-    // Clear user on login pages
-    if (isLoginPage) {
-      setLoggedInUser(null);
-      return;
-    }
-
     const currentUser = localStorage.getItem('currentUser');
     const userProfile = localStorage.getItem('userProfile');
     const supportMember = localStorage.getItem('supportMember');
@@ -54,10 +47,8 @@ export function Navbar() {
       });
     } else if (supportMember) {
       setLoggedInUser(JSON.parse(supportMember));
-    } else {
-      setLoggedInUser(null);
     }
-  }, [pathname, isLoginPage]);
+  }, [pathname]);
 
   // Click-outside detection for profile panel
   useEffect(() => {
@@ -81,14 +72,14 @@ export function Navbar() {
   }, [showProfilePanel]);
 
   const [profile, setProfile] = useState({
-    name: '',
-    avatar: '',
-    company: '',
-    email: '',
-    phone: '',
-    address: '',
-    industry: '',
-    squareFeet: '',
+    name: 'Sarah Johnson',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
+    company: 'Tech Startup HQ',
+    email: 'admin@techstartuphq.com',
+    phone: '+61 2 9234 5678',
+    address: '123 Tech Street, Sydney NSW 2000',
+    industry: 'Technology',
+    squareFeet: '5,000 sqft',
   });
 
   const [editProfile, setEditProfile] = useState(profile);
@@ -174,7 +165,7 @@ export function Navbar() {
         )}
 
         {/* CTA Buttons / Profile Panel */}
-        {!isAuthenticated && !isLoginPage ? (
+        {!isAuthenticated ? (
           <div className="hidden md:flex items-center gap-4">
             <Link
               href="/login"
@@ -387,7 +378,7 @@ export function Navbar() {
                 </Link>
               ))}
 
-              {!isAuthenticated && !isLoginPage ? (
+              {!isAuthenticated ? (
                 <>
                   <Link
                     href="/login"
