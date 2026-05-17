@@ -421,6 +421,16 @@ export default function AdminPortal() {
     }
   }, [router]);
 
+  // Update selectedTicket in real-time when tickets change (for real-time comments)
+  useEffect(() => {
+    if (selectedTicket && tickets.length > 0) {
+      const updatedTicket = tickets.find(t => t.id === selectedTicket.id);
+      if (updatedTicket) {
+        setSelectedTicket(updatedTicket);
+      }
+    }
+  }, [tickets]);
+
   // Show loading state while checking auth
   if (!isAuthorized) {
     return (
