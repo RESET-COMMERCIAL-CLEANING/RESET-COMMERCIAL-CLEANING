@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
-import { subscribeToTickets, updateTicket, type Attachment } from '@/lib/db/tickets';
+import { subscribeToTickets, updateTicket, createTicket, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { getAllSupportTeam } from '@/lib/db/supportTeam';
 import { formatTicketResponseEmail, formatTicketAssignmentEmail, sendEmail } from '@/lib/email';
@@ -49,6 +49,16 @@ export default function AdminPortal() {
   const [assignToName, setAssignToName] = useState('');
   const [supportTeamMembers, setSupportTeamMembers] = useState<any[]>([]);
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+  const [showCreateTicket, setShowCreateTicket] = useState(false);
+  const [newTicketForm, setNewTicketForm] = useState({
+    userName: '',
+    userEmail: '',
+    userType: 'client' as 'client' | 'subcontractor',
+    subject: '',
+    message: '',
+    category: 'general',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+  });
 
   // Initialize tickets from localStorage or use mock data
   const initializeTickets = (): SupportTicket[] => {
@@ -127,6 +137,50 @@ export default function AdminPortal() {
   const filteredTickets = tickets.filter(t =>
     filter === 'all' ? true : t.status === filter
   );
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newTicketForm.userName.trim() || !newTicketForm.userEmail.trim() || !newTicketForm.subject.trim() || !newTicketForm.message.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      console.log('🎫 Creating new ticket...');
+
+      const ticket = await createTicket({
+        ticketNumber: `TKT-${Date.now()}`,
+        userId: `client-${Date.now()}`,
+        userName: newTicketForm.userName,
+        userEmail: newTicketForm.userEmail,
+        userType: newTicketForm.userType,
+        category: newTicketForm.category,
+        subject: newTicketForm.subject,
+        message: newTicketForm.message,
+        status: 'open',
+        priority: newTicketForm.priority,
+      });
+
+      console.log('✅ Ticket created:', ticket.ticketNumber);
+
+      // Reset form
+      setNewTicketForm({
+        userName: '',
+        userEmail: '',
+        userType: 'client',
+        subject: '',
+        message: '',
+        category: 'general',
+        priority: 'medium',
+      });
+      setShowCreateTicket(false);
+      alert(`Ticket created successfully: ${ticket.ticketNumber}`);
+    } catch (error) {
+      console.error('❌ Failed to create ticket:', error);
+      alert('Failed to create ticket. Please try again.');
+    }
+  };
 
   const handleSubmitResponse = async () => {
     if (!responseText.trim() || !selectedTicket) return;
@@ -411,6 +465,128 @@ export default function AdminPortal() {
                 );
               })}
             </div>
+
+            {/* Create Ticket Button */}
+            <div className="mb-8 flex gap-3">
+              <button
+                onClick={() => setShowCreateTicket(!showCreateTicket)}
+                className="px-6 py-3 bg-reset-green text-black rounded-lg font-bold hover:bg-reset-green/80 transition-colors flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Create Ticket
+              </button>
+            </div>
+
+            {/* Create Ticket Form */}
+            {showCreateTicket && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8 p-6 rounded-xl glass border border-reset-green/20"
+              >
+                <h3 className="text-xl font-bold text-white mb-6">Create New Support Ticket</h3>
+                <form onSubmit={handleCreateTicket} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-300 mb-2">Name</label>
+                      <input
+                        type="text"
+                        value={newTicketForm.userName}
+                        onChange={(e) => setNewTicketForm({ ...newTicketForm, userName: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                        placeholder="Customer name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-300 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={newTicketForm.userEmail}
+                        onChange={(e) => setNewTicketForm({ ...newTicketForm, userEmail: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                        placeholder="Customer email"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-300 mb-2">Type</label>
+                      <select
+                        value={newTicketForm.userType}
+                        onChange={(e) => setNewTicketForm({ ...newTicketForm, userType: e.target.value as 'client' | 'subcontractor' })}
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white focus:border-reset-green focus:outline-none"
+                      >
+                        <option value="client" className="bg-black">Business Owner</option>
+                        <option value="subcontractor" className="bg-black">Subcontractor</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-300 mb-2">Priority</label>
+                      <select
+                        value={newTicketForm.priority}
+                        onChange={(e) => setNewTicketForm({ ...newTicketForm, priority: e.target.value as 'low' | 'medium' | 'high' | 'urgent' })}
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white focus:border-reset-green focus:outline-none"
+                      >
+                        <option value="low" className="bg-black">Low</option>
+                        <option value="medium" className="bg-black">Medium</option>
+                        <option value="high" className="bg-black">High</option>
+                        <option value="urgent" className="bg-black">Urgent</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-300 mb-2">Category</label>
+                    <input
+                      type="text"
+                      value={newTicketForm.category}
+                      onChange={(e) => setNewTicketForm({ ...newTicketForm, category: e.target.value })}
+                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                      placeholder="e.g., billing, technical, quality"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-300 mb-2">Subject</label>
+                    <input
+                      type="text"
+                      value={newTicketForm.subject}
+                      onChange={(e) => setNewTicketForm({ ...newTicketForm, subject: e.target.value })}
+                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                      placeholder="Ticket subject"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-300 mb-2">Message</label>
+                    <textarea
+                      value={newTicketForm.message}
+                      onChange={(e) => setNewTicketForm({ ...newTicketForm, message: e.target.value })}
+                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none resize-none"
+                      rows={4}
+                      placeholder="Ticket message/description"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      className="flex-1 py-2 bg-reset-green text-black rounded font-bold hover:bg-reset-green/80 transition-colors"
+                    >
+                      Create Ticket
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateTicket(false)}
+                      className="flex-1 py-2 bg-reset-green/20 text-reset-green rounded font-bold hover:bg-reset-green/30 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
 
             {/* Filter Tabs */}
             <div className="flex gap-3 mb-8 flex-wrap">

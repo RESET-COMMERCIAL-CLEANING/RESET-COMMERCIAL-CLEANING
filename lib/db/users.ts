@@ -11,7 +11,7 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore';
-import { encryptPassword, decryptPassword, verifyPassword } from '@/lib/crypto';
+import { encryptPassword, decryptPassword, verifyPassword, generateTempPassword } from '@/lib/crypto';
 
 export interface UserProfile {
   id: string;
@@ -57,17 +57,23 @@ export const getUsersByRole = async (role: 'client' | 'subcontractor'): Promise<
   return querySnapshot.docs.map(doc => doc.data() as UserProfile);
 };
 
-export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'createdAt' | 'passwordChangedAt'>): Promise<UserProfile> => {
-  // Filter out undefined values - Firestore doesn't accept undefined
-  const cleanData = Object.fromEntries(
-    Object.entries(data).filter(([_, value]) => value !== undefined && value !== null && value !== '')
-  );
+export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'createdAt' | 'passwordChangedAt'>): Promise<UserProfile & { tempPassword: string }> => {
+  // Auto-generate tempPassword if not provided
+  const tempPassword = data.tempPassword || generateTempPassword();
 
-  // Encrypt passwords if provided
+  // Filter out undefined values (but keep password fields)
+  const cleanData: any = {};
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '' && key !== 'tempPassword' && key !== 'password') {
+      cleanData[key] = value;
+    }
+  });
+
+  // Encrypt passwords
   const encryptedData = {
     ...cleanData,
-    tempPassword: data.tempPassword ? encryptPassword(data.tempPassword) : undefined,
-    password: data.password ? encryptPassword(data.password) : undefined,
+    tempPassword: encryptPassword(tempPassword),
+    password: encryptPassword(data.password || tempPassword), // Use tempPassword as initial password if not provided
   };
 
   const newUser: UserProfile = {
@@ -75,11 +81,15 @@ export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'cr
     id: uid,
     createdAt: Timestamp.now(),
     requiresPasswordChange: true,
-    passwordChangedAt: undefined,
   } as UserProfile;
 
   await setDoc(doc(usersCollection, uid), newUser);
-  return newUser;
+
+  // Return with unencrypted tempPassword for display to superuser
+  return {
+    ...newUser,
+    tempPassword, // Return plain temp password so superuser can see it
+  } as UserProfile & { tempPassword: string };
 };
 
 export const updateUser = async (uid: string, data: Partial<UserProfile>): Promise<void> => {
