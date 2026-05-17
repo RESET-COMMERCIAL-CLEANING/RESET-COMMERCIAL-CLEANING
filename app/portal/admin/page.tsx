@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw, Users, User, Plus, Send } from 'lucide-react';
+import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw, Users, User, Plus, Send, Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
@@ -55,6 +55,7 @@ export default function AdminPortal() {
   const [showResponseForm, setShowResponseForm] = useState(false);
   const [responseText, setResponseText] = useState('');
   const [filter, setFilter] = useState<'all' | 'unassigned' | 'assigned' | 'resolved' | 'archived' | 'deleted'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team'>('tickets');
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
@@ -150,9 +151,25 @@ export default function AdminPortal() {
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
-  const filteredTickets = tickets.filter(t =>
-    filter === 'all' ? true : t.status === filter
-  );
+  const filteredTickets = tickets.filter(t => {
+    // Filter by status
+    const statusMatch = filter === 'all' ? true : t.status === filter;
+
+    // Filter by search query
+    if (!searchQuery.trim()) {
+      return statusMatch;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return statusMatch && (
+      t.ticketNumber?.toLowerCase().includes(query) ||
+      t.subject?.toLowerCase().includes(query) ||
+      t.message?.toLowerCase().includes(query) ||
+      t.userName?.toLowerCase().includes(query) ||
+      t.userEmail?.toLowerCase().includes(query) ||
+      t.category?.toLowerCase().includes(query)
+    );
+  });
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -682,6 +699,20 @@ export default function AdminPortal() {
                 </form>
               </motion.div>
             )}
+
+            {/* Search Box */}
+            <div className="mb-8">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Search tickets by number, subject, customer name, or category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
 
             {/* Filter Tabs */}
             <div className="flex gap-3 mb-8 flex-wrap">

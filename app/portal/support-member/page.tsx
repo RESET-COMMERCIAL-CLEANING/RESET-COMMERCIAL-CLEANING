@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, CheckCircle, Clock, AlertCircle, X, CheckCircle2, HelpCircle, Send } from 'lucide-react';
+import { MessageSquare, CheckCircle, Clock, AlertCircle, X, CheckCircle2, HelpCircle, Send, Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
@@ -56,14 +56,31 @@ export default function SupportMemberPortal() {
   const [moreInfoText, setMoreInfoText] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
   // Filter tickets assigned to this member
   const assignedTickets = tickets.filter(t => t.assignedTo === member?.id);
-  const filteredTickets = assignedTickets.filter(t =>
-    filter === 'all' ? true : t.status === filter
-  );
+  const filteredTickets = assignedTickets.filter(t => {
+    // Filter by status
+    const statusMatch = filter === 'all' ? true : t.status === filter;
+
+    // Filter by search query
+    if (!searchQuery.trim()) {
+      return statusMatch;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return statusMatch && (
+      t.ticketNumber?.toLowerCase().includes(query) ||
+      t.subject?.toLowerCase().includes(query) ||
+      t.message?.toLowerCase().includes(query) ||
+      t.userName?.toLowerCase().includes(query) ||
+      t.userEmail?.toLowerCase().includes(query) ||
+      t.category?.toLowerCase().includes(query)
+    );
+  });
 
   const handleSubmitResponse = async () => {
     if (!responseText.trim() || !selectedTicket) return;
@@ -331,6 +348,19 @@ export default function SupportMemberPortal() {
           </div>
         </motion.div>
 
+        {/* Search Box */}
+        <div className="mb-8">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search tickets by number, subject, or customer name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none transition-colors"
+            />
+          </div>
+        </div>
 
         {/* Filter Tabs */}
         <div className="flex gap-3 mb-8 flex-wrap">
