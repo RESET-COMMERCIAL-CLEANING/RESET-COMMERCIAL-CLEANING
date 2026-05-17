@@ -165,7 +165,7 @@ export function Navbar() {
         )}
 
         {/* CTA Buttons / Profile Panel */}
-        {!isAuthenticated ? (
+        {!isAuthenticated && !isSupportLogin ? (
           <div className="hidden md:flex items-center gap-4">
             <Link
               href="/login"
@@ -378,7 +378,7 @@ export function Navbar() {
                 </Link>
               ))}
 
-              {!isAuthenticated ? (
+              {!isAuthenticated && !isSupportLogin ? (
                 <>
                   <Link
                     href="/login"
