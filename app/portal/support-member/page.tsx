@@ -9,6 +9,8 @@ import { logSupportActivity } from '@/lib/supportTeamManagement';
 import { subscribeToTicketsByAssignee, updateTicket, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { logActivity } from '@/lib/db/activity';
+import { formatTicketResponseEmail, sendEmail } from '@/lib/email';
+import { logTicketResponse, logEmailSent } from '@/lib/db/activity-log';
 
 interface SupportTicket {
   id: string;
@@ -238,13 +240,15 @@ export default function SupportMemberPortal() {
     if (!responseText.trim() || !selectedTicket) return;
 
     try {
+      console.log('📝 Submitting response for ticket:', selectedTicket.ticketNumber);
+
       await updateTicket(selectedTicket.id, {
         response: responseText,
-        status: 'in-progress' as const,
+        status: 'response-given' as const,
         attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined,
       });
 
-      // Log activity
+      // Log activity in the old system for backward compatibility
       if (member?.id) {
         await logActivity({
           memberId: member.id,
@@ -255,6 +259,43 @@ export default function SupportMemberPortal() {
         });
       }
 
+      // Log response in new activity system
+      await logTicketResponse({
+        ticketId: selectedTicket.id,
+        ticketNumber: selectedTicket.ticketNumber,
+        respondentId: member?.id || 'support',
+        respondentName: member?.name || 'Support Team',
+        responseLength: responseText.length,
+        hasAttachments: uploadedFiles.length > 0,
+      });
+
+      // Send email to ticket raiser
+      const emailTemplate = formatTicketResponseEmail({
+        ticketNumber: selectedTicket.ticketNumber,
+        subject: selectedTicket.subject,
+        message: selectedTicket.message,
+        userName: selectedTicket.userName,
+        userEmail: selectedTicket.userEmail,
+        userType: selectedTicket.userType,
+        category: selectedTicket.category,
+        priority: selectedTicket.priority,
+        response: responseText,
+        assignedToName: member?.name || 'Support Team',
+      });
+
+      const emailSent = await sendEmail(emailTemplate);
+
+      // Log email activity
+      await logEmailSent({
+        ticketId: selectedTicket.id,
+        ticketNumber: selectedTicket.ticketNumber,
+        recipientEmail: selectedTicket.userEmail,
+        emailType: 'ticket_response',
+        success: emailSent,
+      });
+
+      console.log('✅ Response submitted and email sent to:', selectedTicket.userEmail);
+
       setSuccessMessage('Response submitted successfully!');
       setShowSuccessModal(true);
       setResponseText('');
@@ -262,7 +303,8 @@ export default function SupportMemberPortal() {
       setShowResponseForm(false);
       setTimeout(() => setShowSuccessModal(false), 2000);
     } catch (error) {
-      console.error('Failed to submit response:', error);
+      console.error('❌ Failed to submit response:', error);
+      alert('Failed to submit response. Please try again.');
     }
   };
 

@@ -10,6 +10,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { subscribeToTickets, updateTicket, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { getAllSupportTeam } from '@/lib/db/supportTeam';
+import { formatTicketResponseEmail, formatTicketAssignmentEmail, sendEmail } from '@/lib/email';
+import { logTicketResponse, logTicketAssignment, logEmailSent, logTicketResolution } from '@/lib/db/activity-log';
 import UserManagement from '@/components/UserManagement';
 import SupportTeamManagement from '@/components/SupportTeamManagement';
 
@@ -130,17 +132,60 @@ export default function AdminPortal() {
     if (!responseText.trim() || !selectedTicket) return;
 
     try {
+      console.log('📝 Submitting response for ticket:', selectedTicket.ticketNumber);
+
+      // Update ticket with response
       await updateTicket(selectedTicket.id, {
         response: responseText,
-        status: 'in-progress' as const,
+        status: 'response-given' as const,
         attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined,
       });
+
+      console.log('✅ Ticket updated with response');
+
+      // Log the response activity
+      await logTicketResponse({
+        ticketId: selectedTicket.id,
+        ticketNumber: selectedTicket.ticketNumber,
+        respondentId: user?.id || 'admin',
+        respondentName: user?.name || 'Admin',
+        responseLength: responseText.length,
+        hasAttachments: uploadedFiles.length > 0,
+      });
+
+      // Send email to the ticket raiser
+      const emailTemplate = formatTicketResponseEmail({
+        ticketNumber: selectedTicket.ticketNumber,
+        subject: selectedTicket.subject,
+        message: selectedTicket.message,
+        userName: selectedTicket.userName,
+        userEmail: selectedTicket.userEmail,
+        userType: selectedTicket.userType,
+        category: selectedTicket.category,
+        priority: selectedTicket.priority,
+        response: responseText,
+        assignedToName: selectedTicket.assignedToName || 'Support Team',
+      });
+
+      const emailSent = await sendEmail(emailTemplate);
+
+      // Log email activity
+      await logEmailSent({
+        ticketId: selectedTicket.id,
+        ticketNumber: selectedTicket.ticketNumber,
+        recipientEmail: selectedTicket.userEmail,
+        emailType: 'ticket_response',
+        success: emailSent,
+      });
+
+      console.log('📧 Response email sent to:', selectedTicket.userEmail);
 
       setResponseText('');
       setUploadedFiles([]);
       setShowResponseForm(false);
     } catch (error) {
-      console.error('Failed to submit response:', error);
+      console.error('❌ Failed to submit response:', error);
+      alert('Failed to submit response. Please try again.');
     }
   };
 
@@ -148,13 +193,26 @@ export default function AdminPortal() {
     if (!selectedTicket) return;
 
     try {
+      console.log('✅ Resolving ticket:', selectedTicket.ticketNumber);
+
       await updateTicket(selectedTicket.id, {
         status: 'resolved' as const,
         resolvedAt: Timestamp.now(),
       });
+
+      // Log ticket resolution
+      await logTicketResolution({
+        ticketId: selectedTicket.id,
+        ticketNumber: selectedTicket.ticketNumber,
+        resolvedById: user?.id || 'admin',
+        resolvedByName: user?.name || 'Admin',
+      });
+
+      console.log('✅ Ticket resolved and logged');
       setSelectedTicket(null);
     } catch (error) {
-      console.error('Failed to resolve ticket:', error);
+      console.error('❌ Failed to resolve ticket:', error);
+      alert('Failed to resolve ticket. Please try again.');
     }
   };
 
@@ -517,17 +575,57 @@ export default function AdminPortal() {
                         if (selected) {
                           const member = supportTeamMembers.find(m => m.id === selected);
                           try {
+                            console.log('🎯 Assigning ticket to:', member?.name);
+
+                            // Update ticket assignment
                             await updateTicket(selectedTicket.id, {
                               assignedTo: selected,
                               assignedToName: member?.name || '',
+                              status: 'assigned' as const,
                             });
+
+                            // Log the assignment activity
+                            await logTicketAssignment({
+                              ticketId: selectedTicket.id,
+                              ticketNumber: selectedTicket.ticketNumber,
+                              assignedById: user?.id || 'admin',
+                              assignedByName: user?.name || 'Admin',
+                              assignedToId: selected,
+                              assignedToName: member?.name || '',
+                            });
+
+                            // Send assignment notification email
+                            const assignmentEmail = formatTicketAssignmentEmail({
+                              ticketNumber: selectedTicket.ticketNumber,
+                              subject: selectedTicket.subject,
+                              priority: selectedTicket.priority,
+                              category: selectedTicket.category,
+                              assignedToName: member?.name || '',
+                              assignedToEmail: member?.email || '',
+                            });
+
+                            const emailSent = await sendEmail(assignmentEmail);
+
+                            // Log email activity
+                            await logEmailSent({
+                              ticketId: selectedTicket.id,
+                              ticketNumber: selectedTicket.ticketNumber,
+                              recipientEmail: member?.email || '',
+                              emailType: 'ticket_assignment',
+                              success: emailSent,
+                            });
+
+                            console.log('✅ Ticket assigned and notification sent');
+
                             setSelectedTicket({
                               ...selectedTicket,
                               assignedTo: selected,
-                              assignedToName: member?.name || ''
+                              assignedToName: member?.name || '',
+                              status: 'assigned',
                             });
                           } catch (error) {
-                            console.error('Failed to assign ticket:', error);
+                            console.error('❌ Failed to assign ticket:', error);
+                            alert('Failed to assign ticket. Please try again.');
                           }
                         }
                       }}
