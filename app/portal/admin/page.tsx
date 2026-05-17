@@ -1100,10 +1100,14 @@ export default function AdminPortal() {
                   {selectedTicket.comments && selectedTicket.comments.length > 0 && (
                     <div className="space-y-3 max-h-64 overflow-y-auto">
                       {selectedTicket.comments.map((comment: any) => (
-                        <div key={comment.id} className="p-3 rounded-lg bg-white/5 border border-reset-green/20 space-y-2">
+                        <div key={comment.id} className={`p-3 rounded-lg border space-y-2 ${
+                          comment.authorRole === 'superuser'
+                            ? 'bg-yellow-500/10 border-yellow-500/30'
+                            : 'bg-blue-500/10 border-blue-500/30'
+                        }`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-reset-green">{comment.authorName}</span>
+                              <span className="font-bold text-sm text-white">{comment.authorName}</span>
                               <span className={`px-2 py-0.5 rounded text-xs font-bold ${
                                 comment.authorRole === 'superuser'
                                   ? 'bg-yellow-500/20 text-yellow-400'

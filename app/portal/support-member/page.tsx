@@ -506,33 +506,37 @@ export default function SupportMemberPortal() {
                 <div className="mb-6 pb-6 border-b border-reset-green/20">
                   <h4 className="font-bold text-white mb-3 text-sm flex items-center gap-2">
                     <MessageSquare size={16} />
-                    Internal Comments from Superuser
+                    Internal Discussion
                   </h4>
                   {selectedTicket.comments && selectedTicket.comments.length > 0 ? (
                     <div className="space-y-3 max-h-48 overflow-y-auto">
-                      {selectedTicket.comments.map((comment) => {
-                        // Only show superuser comments
-                        if (comment.authorRole !== 'superuser') return null;
-                        return (
-                          <div key={comment.id} className="p-3 rounded-lg bg-reset-green/10 border border-reset-green/30 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-reset-green">{comment.authorName}</span>
-                                <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400">
-                                  🔑 Admin
-                                </span>
-                              </div>
-                              <span className="text-xs text-gray-500">
-                                {comment.createdAt?.toDate?.()?.toLocaleString() || comment.createdAt || 'Just now'}
+                      {selectedTicket.comments.map((comment) => (
+                        <div key={comment.id} className={`p-3 rounded-lg border space-y-2 ${
+                          comment.authorRole === 'superuser'
+                            ? 'bg-yellow-500/10 border-yellow-500/30'
+                            : 'bg-blue-500/10 border-blue-500/30'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm text-white">{comment.authorName}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                comment.authorRole === 'superuser'
+                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                  : 'bg-blue-500/20 text-blue-400'
+                              }`}>
+                                {comment.authorRole === 'superuser' ? '🔑 Admin' : '👤 You'}
                               </span>
                             </div>
-                            <p className="text-sm text-gray-300">{comment.message}</p>
+                            <span className="text-xs text-gray-500">
+                              {comment.createdAt?.toDate?.()?.toLocaleString() || comment.createdAt || 'Just now'}
+                            </span>
                           </div>
-                        );
-                      })}
+                          <p className="text-sm text-gray-300">{comment.message}</p>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-500 italic">No comments from superuser yet</p>
+                    <p className="text-xs text-gray-500 italic">No comments yet</p>
                   )}
                 </div>
 
