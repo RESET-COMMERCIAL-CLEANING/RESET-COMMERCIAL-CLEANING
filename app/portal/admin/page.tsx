@@ -16,6 +16,15 @@ import { logTicketResponse, logTicketAssignment, logEmailSent, logTicketResoluti
 import UserManagement from '@/components/UserManagement';
 import SupportTeamManagement from '@/components/SupportTeamManagement';
 
+interface TicketComment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'superuser' | 'support-member';
+  message: string;
+  createdAt: any;
+}
+
 interface SupportTicket {
   id: string;
   ticketNumber: string;
@@ -34,6 +43,7 @@ interface SupportTicket {
   attachments?: Attachment[];
   assignedTo?: string;
   assignedToName?: string;
+  comments?: TicketComment[];
 }
 
 export default function AdminPortal() {
