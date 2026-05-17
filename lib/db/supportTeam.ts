@@ -11,7 +11,7 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore';
-import { encryptPassword, decryptPassword, verifyPassword, generateTempPassword } from '@/lib/crypto';
+import { generateTempPassword } from '@/lib/crypto';
 
 export interface SupportTeamMember {
   id: string;
@@ -53,9 +53,7 @@ export const createSupportMember = async (uid: string, data: Omit<SupportTeamMem
   // Auto-generate tempPassword if not provided
   const tempPassword = data.tempPassword || generateTempPassword();
 
-  console.log('🔐 Creating support member with tempPassword:');
-  console.log('   Plain tempPassword:', tempPassword);
-  console.log('   Length:', tempPassword.length);
+  console.log('✅ Creating support member with tempPassword:', tempPassword);
 
   // Filter out undefined values (but keep password fields)
   const cleanData: any = {};
@@ -65,21 +63,15 @@ export const createSupportMember = async (uid: string, data: Omit<SupportTeamMem
     }
   });
 
-  // Encrypt passwords
-  const encryptedTempPassword = encryptPassword(tempPassword);
-  const encryptedPassword = encryptPassword(data.password || tempPassword);
-
-  console.log('🔒 Encrypted tempPassword length:', encryptedTempPassword.length);
-  console.log('🔒 Encrypted password length:', encryptedPassword.length);
-
-  const encryptedData = {
+  // Store passwords as plain text (temporary - no encryption)
+  const newMemberData = {
     ...cleanData,
-    tempPassword: encryptedTempPassword,
-    password: encryptedPassword,
+    tempPassword: tempPassword,
+    password: data.password || tempPassword,
   };
 
   const newMember: SupportTeamMember = {
-    ...encryptedData,
+    ...newMemberData,
     id: uid,
     joinedDate: Timestamp.now(),
     requiresPasswordChange: true,
@@ -91,25 +83,21 @@ export const createSupportMember = async (uid: string, data: Omit<SupportTeamMem
     uid,
     email: data.email,
     name: data.name,
-    tempPasswordCreated: true,
+    tempPassword: tempPassword,
   });
 
-  // Return with unencrypted tempPassword for display to superuser
+  // Return with plain tempPassword for display to superuser
   return {
     ...newMember,
-    tempPassword, // Return plain temp password so superuser can see it
+    tempPassword,
   } as SupportTeamMember & { tempPassword: string };
 };
 
 export const updateSupportMember = async (uid: string, data: Partial<SupportTeamMember>): Promise<void> => {
-  // Encrypt password if being updated
+  // Update data as plain text (temporary - no encryption)
   const updateData = { ...data };
   if (data.password) {
-    updateData.password = encryptPassword(data.password);
     updateData.passwordChangedAt = Timestamp.now();
-  }
-  if (data.tempPassword) {
-    updateData.tempPassword = encryptPassword(data.tempPassword);
   }
 
   const docRef = doc(supportTeamCollection, uid);
@@ -124,17 +112,31 @@ export const authSupportMember = async (email: string, password: string): Promis
   const q = query(supportTeamCollection, where('email', '==', email.toLowerCase()));
   const querySnapshot = await getDocs(q);
 
-  if (querySnapshot.empty) return null;
+  if (querySnapshot.empty) {
+    console.log('❌ No member found with email:', email);
+    return null;
+  }
 
   const member = querySnapshot.docs[0].data() as SupportTeamMember;
 
-  // Check if password matches either tempPassword or password
-  const tempPasswordMatch = member.tempPassword && verifyPassword(password, member.tempPassword);
-  const passwordMatch = member.password && verifyPassword(password, member.password);
+  console.log('👤 Member found:', { email: member.email, name: member.name });
+  console.log('🔑 Checking passwords:');
+  console.log('   Input password:', password);
+  console.log('   DB tempPassword:', member.tempPassword);
+  console.log('   DB password:', member.password);
+
+  // Check if password matches either tempPassword or password (plain text)
+  const tempPasswordMatch = member.tempPassword === password;
+  const passwordMatch = member.password === password;
+
+  console.log('   Temp match:', tempPasswordMatch);
+  console.log('   Password match:', passwordMatch);
 
   if ((tempPasswordMatch || passwordMatch) && member.status === 'active') {
+    console.log('✅ Authentication successful');
     return member;
   }
 
+  console.log('❌ Authentication failed');
   return null;
 };

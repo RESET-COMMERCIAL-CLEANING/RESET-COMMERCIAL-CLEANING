@@ -11,7 +11,7 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore';
-import { encryptPassword, decryptPassword, verifyPassword, generateTempPassword } from '@/lib/crypto';
+import { generateTempPassword } from '@/lib/crypto';
 
 export interface UserProfile {
   id: string;
@@ -69,15 +69,15 @@ export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'cr
     }
   });
 
-  // Encrypt passwords
-  const encryptedData = {
+  // Store passwords as plain text (temporary - no encryption)
+  const newUserData = {
     ...cleanData,
-    tempPassword: encryptPassword(tempPassword),
-    password: encryptPassword(data.password || tempPassword), // Use tempPassword as initial password if not provided
+    tempPassword: tempPassword,
+    password: data.password || tempPassword,
   };
 
   const newUser: UserProfile = {
-    ...encryptedData,
+    ...newUserData,
     id: uid,
     createdAt: Timestamp.now(),
     requiresPasswordChange: true,
@@ -85,22 +85,24 @@ export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'cr
 
   await setDoc(doc(usersCollection, uid), newUser);
 
-  // Return with unencrypted tempPassword for display to superuser
+  console.log('✅ User created:', {
+    uid,
+    email: data.email,
+    tempPassword: tempPassword,
+  });
+
+  // Return with plain tempPassword for display to superuser
   return {
     ...newUser,
-    tempPassword, // Return plain temp password so superuser can see it
+    tempPassword,
   } as UserProfile & { tempPassword: string };
 };
 
 export const updateUser = async (uid: string, data: Partial<UserProfile>): Promise<void> => {
-  // Encrypt password if being updated
+  // Update data as plain text (temporary - no encryption)
   const updateData = { ...data };
   if (data.password) {
-    updateData.password = encryptPassword(data.password);
     updateData.passwordChangedAt = Timestamp.now();
-  }
-  if (data.tempPassword) {
-    updateData.tempPassword = encryptPassword(data.tempPassword);
   }
 
   const docRef = doc(usersCollection, uid);

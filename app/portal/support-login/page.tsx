@@ -8,7 +8,6 @@ import { logout } from '@/lib/auth';
 import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import PasswordChange from '@/components/PasswordChange';
-import { verifyPassword, encryptPassword } from '@/lib/crypto';
 
 export default function SupportLogin() {
   const router = useRouter();
@@ -39,18 +38,15 @@ export default function SupportLogin() {
         memberEmail: memberData.email
       });
 
-      // Encrypt the new password
-      const encryptedPassword = encryptPassword(newPassword);
-
       // Update password in Firestore and mark password change as complete
       const memberRef = doc(db, 'supportTeam', memberData.id);
       const updateData = {
-        password: encryptedPassword,
+        password: newPassword,
         requiresPasswordChange: false,
         passwordChangedAt: Timestamp.now(),
       };
 
-      console.log('📝 Updating Firestore with encrypted password');
+      console.log('📝 Updating Firestore with new password');
       await updateDoc(memberRef, updateData);
 
       console.log('✅ Password updated successfully in Firestore');
@@ -121,22 +117,19 @@ export default function SupportLogin() {
         memberId,
         email: member.email,
         name: member.name,
-        hasTempPassword: !!member.tempPassword,
-        hasPassword: !!member.password,
         requiresPasswordChange: member.requiresPasswordChange,
       });
 
-      // Check if password matches (either temp password or regular password)
+      // Check if password matches (either temp password or regular password - plain text)
       console.log('🔑 Checking password match...');
-      const tempPasswordMatch = member.tempPassword && verifyPassword(trimmedPassword, member.tempPassword);
-      console.log('📝 Temp password match:', tempPasswordMatch, 'Has temp password field:', !!member.tempPassword);
+      const tempPasswordMatch = member.tempPassword === trimmedPassword;
+      console.log('📝 Temp password match:', tempPasswordMatch);
 
-      const passwordMatch = member.password && verifyPassword(trimmedPassword, member.password);
-      console.log('📝 Password match:', passwordMatch, 'Has password field:', !!member.password);
+      const passwordMatch = member.password === trimmedPassword;
+      console.log('📝 Password match:', passwordMatch);
 
       if (!tempPasswordMatch && !passwordMatch) {
         console.error('❌ Password verification failed for:', trimmedEmail);
-        console.log('Input password length:', trimmedPassword.length);
         setError('Invalid email or password');
         setIsLoading(false);
         return;
