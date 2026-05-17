@@ -1,7 +1,7 @@
 // Simple auth system for superuser and regular user access
 // In production, integrate with your backend authentication system (JWT, OAuth, etc.)
 
-import { getAllUsers, UserProfile } from './userManagement';
+import type { UserProfile } from './db/users';
 
 export interface User {
   id: string;
@@ -92,10 +92,13 @@ export const addSuperuser = (user: Omit<User, 'role'> & { role: 'superuser' | 'a
 };
 
 // Login regular user (client or subcontractor)
-// Validates email and temporary password
-export const loginUser = (email: string, password: string): { success: boolean; user?: UserProfile; error?: string } => {
+// Validates email and temporary password - uses Firestore
+export const loginUser = async (email: string, password: string): Promise<{ success: boolean; user?: UserProfile; error?: string }> => {
   try {
-    const users = getAllUsers();
+    // Import here to avoid circular dependencies
+    const { getAllUsers } = await import('./db/users');
+
+    const users = await getAllUsers();
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
@@ -132,6 +135,7 @@ export const loginUser = (email: string, password: string): { success: boolean; 
 
     return { success: true, user };
   } catch (error) {
+    console.error('Login error:', error);
     return { success: false, error: 'An error occurred during login. Please try again.' };
   }
 };

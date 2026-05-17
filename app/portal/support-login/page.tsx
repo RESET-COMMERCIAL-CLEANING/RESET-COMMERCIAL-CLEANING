@@ -4,8 +4,9 @@ import { motion } from 'framer-motion';
 import { LogIn, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authSupportMember, initializeSupportTeam } from '@/lib/supportTeamManagement';
 import { logout } from '@/lib/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function SupportLogin() {
   const router = useRouter();
@@ -14,13 +15,12 @@ export default function SupportLogin() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Clear any existing session and initialize support team data on page load
+  // Clear any existing session on page load
   useEffect(() => {
     logout();
-    initializeSupportTeam();
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -31,25 +31,43 @@ export default function SupportLogin() {
       return;
     }
 
-    setTimeout(() => {
-      const member = authSupportMember(username, password);
+    try {
+      // Query Firestore for support member with matching username and password
+      const supportTeamRef = collection(db, 'supportTeam');
+      const q = query(
+        supportTeamRef,
+        where('username', '==', username),
+        where('password', '==', password)
+      );
+      const snapshot = await getDocs(q);
 
-      if (member) {
-        localStorage.setItem(
-          'supportMember',
-          JSON.stringify({
-            id: member.id,
-            name: member.name,
-            email: member.email,
-            role: member.role,
-          })
-        );
-        router.push('/portal/support-member');
-      } else {
+      if (snapshot.empty) {
         setError('Invalid username or password');
         setIsLoading(false);
+        return;
       }
-    }, 500);
+
+      const member = snapshot.docs[0].data();
+      const memberId = snapshot.docs[0].id;
+
+      // Store member in localStorage
+      localStorage.setItem(
+        'supportMember',
+        JSON.stringify({
+          id: memberId,
+          name: member.name,
+          email: member.email,
+          role: member.role,
+          username: member.username,
+        })
+      );
+
+      router.push('/portal/support-member');
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Login failed. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   return (

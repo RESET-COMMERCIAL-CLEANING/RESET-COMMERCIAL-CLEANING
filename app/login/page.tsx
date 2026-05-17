@@ -44,19 +44,26 @@ export default function LoginPage() {
     setIsLoading(true);
     setPasswordError('');
 
-    const result = loginUser(email, password);
+    try {
+      const result = await loginUser(email, password);
 
-    if (result.success && result.user) {
-      setStep('success');
-      addToast(`Welcome! Signed in as ${result.user.firstName} ${result.user.lastName}`, 'success', 3000);
+      if (result.success && result.user) {
+        setStep('success');
+        addToast(`Welcome! Signed in as ${result.user.firstName} ${result.user.lastName}`, 'success', 3000);
 
-      setTimeout(() => {
-        const portalUrl = result.user?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
-        router.push(portalUrl);
-      }, 1500);
-    } else {
-      setPasswordError(result.error || 'Login failed. Please try again.');
-      addToast(result.error || 'Login failed. Please try again.', 'error', 5000);
+        setTimeout(() => {
+          const portalUrl = result.user?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
+          router.push(portalUrl);
+        }, 1500);
+      } else {
+        setPasswordError(result.error || 'Login failed. Please try again.');
+        addToast(result.error || 'Login failed. Please try again.', 'error', 5000);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setPasswordError('Login failed. Please try again.');
+      addToast('Login failed. Please try again.', 'error', 5000);
       setIsLoading(false);
     }
   };
