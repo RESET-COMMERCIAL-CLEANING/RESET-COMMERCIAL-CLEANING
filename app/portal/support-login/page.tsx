@@ -24,33 +24,51 @@ export default function SupportLogin() {
   }, []);
 
   const handlePasswordChanged = async (newPassword: string) => {
-    if (!memberData) return;
+    if (!memberData) {
+      console.error('❌ No member data available');
+      setError('Session error. Please login again.');
+      return;
+    }
 
     setIsLoading(true);
     try {
-      console.log('🔄 Updating password for member:', memberData.id);
-      // Update password in Firestore and mark password change as complete
-      const memberRef = doc(db, 'supportTeam', memberData.id);
-      await updateDoc(memberRef, {
-        password: newPassword,
-        requiresPasswordChange: false
+      console.log('🔄 Updating password for member:', {
+        memberId: memberData.id,
+        memberName: memberData.name,
+        memberEmail: memberData.email
       });
 
-      console.log('✅ Password updated successfully');
+      // Update password in Firestore and mark password change as complete
+      const memberRef = doc(db, 'supportTeam', memberData.id);
+      const updateData = {
+        password: newPassword,
+        requiresPasswordChange: false
+      };
+
+      console.log('📝 Updating Firestore with:', updateData);
+      await updateDoc(memberRef, updateData);
+
+      console.log('✅ Password updated successfully in Firestore');
 
       // Complete login with new password
-      localStorage.setItem(
-        'supportMember',
-        JSON.stringify({
-          id: memberData.id,
-          name: memberData.name,
-          email: memberData.email,
-          role: memberData.role,
-          username: memberData.username,
-        })
-      );
+      const sessionData = {
+        id: memberData.id,
+        name: memberData.name,
+        email: memberData.email,
+        role: memberData.role,
+        username: memberData.username,
+      };
 
-      router.push('/portal/support-member');
+      console.log('💾 Saving session:', sessionData);
+      localStorage.setItem('supportMember', JSON.stringify(sessionData));
+
+      console.log('🔀 Redirecting to support dashboard...');
+      setIsLoading(false);
+
+      // Delay redirect slightly to ensure Firestore update is complete
+      setTimeout(() => {
+        router.push('/portal/support-member');
+      }, 500);
     } catch (error) {
       console.error('❌ Failed to update password:', error);
       setError('Failed to update password. Please try again.');
@@ -92,12 +110,13 @@ export default function SupportLogin() {
         name: member.name,
         email: member.email,
         requiresPasswordChange: member.requiresPasswordChange,
+        hasPassword: !!member.password,
         memberId
       });
 
       // Check if password change is required (first login)
-      if (member.requiresPasswordChange) {
-        console.log('⚠️ Password change required, showing password change form');
+      if (member.requiresPasswordChange === true) {
+        console.log('⚠️ Password change REQUIRED - showing password change form');
         setMemberData({ ...member, id: memberId });
         setShowPasswordChange(true);
         setIsLoading(false);

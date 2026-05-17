@@ -54,7 +54,14 @@ export default function LoginPage() {
 
       if (result.success && result.user) {
         // Check if password change is required
-        if (result.user.requiresPasswordChange) {
+        console.log('👤 User login successful:', {
+          name: `${result.user.firstName} ${result.user.lastName}`,
+          email: result.user.email,
+          requiresPasswordChange: result.user.requiresPasswordChange
+        });
+
+        if (result.user.requiresPasswordChange === true) {
+          console.log('⚠️ Password change required, showing password form');
           setUserData(result.user);
           setShowPasswordChange(true);
           setIsLoading(false);
@@ -81,16 +88,32 @@ export default function LoginPage() {
   };
 
   const handlePasswordChanged = async (newPassword: string) => {
-    if (!userData) return;
+    if (!userData) {
+      console.error('❌ No user data available');
+      setPasswordError('Session error. Please login again.');
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log('🔄 Updating password for user:', {
+        userId: userData.id,
+        userName: `${userData.firstName} ${userData.lastName}`,
+        userEmail: userData.email,
+        userRole: userData.role
+      });
+
       // Update password in Firestore
       const userRef = doc(db, 'users', userData.id);
-      await updateDoc(userRef, {
+      const updateData = {
         password: newPassword,
         requiresPasswordChange: false
-      });
+      };
+
+      console.log('📝 Updating Firestore with:', updateData);
+      await updateDoc(userRef, updateData);
+
+      console.log('✅ Password updated successfully');
 
       // Complete login
       setStep('success');
@@ -98,10 +121,11 @@ export default function LoginPage() {
 
       setTimeout(() => {
         const portalUrl = userData?.role === 'client' ? '/RESET-COMMERCIAL-CLEANING/portal/client' : '/RESET-COMMERCIAL-CLEANING/portal/subcontractor';
+        console.log('🔀 Redirecting to:', portalUrl);
         router.push(portalUrl);
       }, 1500);
     } catch (error) {
-      console.error('Failed to update password:', error);
+      console.error('❌ Failed to update password:', error);
       setPasswordError('Failed to update password. Please try again.');
       setIsLoading(false);
     }
