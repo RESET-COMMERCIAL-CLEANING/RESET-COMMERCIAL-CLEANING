@@ -165,7 +165,7 @@ export default function AdminPortal() {
     try {
       console.log('🎫 Creating new ticket...');
 
-      const ticket = await createTicket({
+      const ticketData: any = {
         ticketNumber: `TKT-${Date.now()}`,
         userId: `client-${Date.now()}`,
         userName: newTicketForm.userName,
@@ -177,8 +177,14 @@ export default function AdminPortal() {
         status: 'unassigned',
         priority: newTicketForm.priority,
         source: newTicketForm.source,
-        sourceLocation: newTicketForm.sourceLocation || undefined,
-      });
+      };
+
+      // Only include sourceLocation if it has a value
+      if (newTicketForm.sourceLocation?.trim()) {
+        ticketData.sourceLocation = newTicketForm.sourceLocation;
+      }
+
+      const ticket = await createTicket(ticketData);
 
       console.log('✅ Ticket created:', ticket.ticketNumber);
 
