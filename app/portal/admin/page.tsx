@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
 import { Toast, useToast } from '@/components/Toast';
-import { subscribeToTickets, updateTicket, createTicket, unassignTicket, resetAllTicketsToUnassigned, deleteAllTickets, type Attachment } from '@/lib/db/tickets';
+import { subscribeToTickets, updateTicket, createTicket, unassignTicket, archiveTicket, deleteTicketById, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { subscribeToAllSupportTeam } from '@/lib/db/supportTeam';
 import { formatTicketResponseEmail, formatTicketAssignmentEmail, sendEmail } from '@/lib/email';
@@ -27,7 +27,7 @@ interface SupportTicket {
   subject: string;
   message: string;
   createdAt: string;
-  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved';
+  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved' | 'archived';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   response?: string;
   resolvedAt?: string;
@@ -317,6 +317,7 @@ export default function AdminPortal() {
       case 'more-info-needed': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'response-given': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case 'resolved': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'archived': return 'bg-slate-600/20 text-slate-300 border-slate-600/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
@@ -480,43 +481,13 @@ export default function AdminPortal() {
             </div>
 
             {/* Create Ticket Button */}
-            <div className="mb-8 flex gap-3 flex-wrap">
+            <div className="mb-8 flex gap-3">
               <button
                 onClick={() => setShowCreateTicket(!showCreateTicket)}
                 className="px-6 py-3 bg-reset-green text-black rounded-lg font-bold hover:bg-reset-green/80 transition-colors flex items-center gap-2"
               >
                 <Plus size={18} />
                 Create Ticket
-              </button>
-              <button
-                onClick={async () => {
-                  if (confirm('Reset all tickets to unassigned state?')) {
-                    try {
-                      await resetAllTicketsToUnassigned();
-                      addToast('All tickets reset to unassigned', 'success', 3000);
-                    } catch (error) {
-                      addToast('Failed to reset tickets', 'error', 5000);
-                    }
-                  }
-                }}
-                className="px-6 py-3 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-600/80 transition-colors text-sm"
-              >
-                Reset All to Unassigned
-              </button>
-              <button
-                onClick={async () => {
-                  if (confirm('Delete ALL tickets? This cannot be undone!')) {
-                    try {
-                      await deleteAllTickets();
-                      addToast('All tickets deleted', 'success', 3000);
-                    } catch (error) {
-                      addToast('Failed to delete tickets', 'error', 5000);
-                    }
-                  }
-                }}
-                className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-600/80 transition-colors text-sm"
-              >
-                Delete All Tickets
               </button>
             </div>
 
@@ -925,32 +896,97 @@ export default function AdminPortal() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3 mt-auto pt-6 border-t border-reset-green/20">
-                  {selectedTicket.status !== 'resolved' && (
-                    <>
-                      {!showResponseForm ? (
-                        <button
-                          onClick={() => setShowResponseForm(true)}
-                          className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
-                        >
-                          <MessageSquare size={16} />
-                          Add Response
-                        </button>
-                      ) : null}
-
-                      {selectedTicket.status === 'in-progress' && (
-                        <button
-                          onClick={handleResolve}
-                          className="flex-1 py-2 bg-green-600 text-white rounded hover:bg-green-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
-                        >
-                          <CheckCircle2 size={16} />
-                          Mark Resolved
-                        </button>
-                      )}
-                    </>
+                <div className="flex gap-2 mt-auto pt-6 border-t border-reset-green/20 flex-wrap">
+                  {selectedTicket.status !== 'resolved' && !showResponseForm && (
+                    <button
+                      onClick={() => setShowResponseForm(true)}
+                      className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
+                    >
+                      <MessageSquare size={16} />
+                      Add Response
+                    </button>
                   )}
 
-                  {selectedTicket.status === 'resolved' && !selectedTicket.resolvedAt && (
+                  {selectedTicket.status === 'in-progress' && (
+                    <button
+                      onClick={handleResolve}
+                      className="flex-1 py-2 bg-green-600 text-white rounded hover:bg-green-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
+                    >
+                      <CheckCircle2 size={16} />
+                      Mark Resolved
+                    </button>
+                  )}
+
+                  {/* Status Change Dropdown */}
+                  <select
+                    value={selectedTicket.status}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value;
+                      try {
+                        await updateTicket(selectedTicket.id, {
+                          status: newStatus as any,
+                        });
+                        setSelectedTicket({
+                          ...selectedTicket,
+                          status: newStatus as any,
+                        });
+                        addToast(`Ticket status changed to ${newStatus}`, 'success', 3000);
+                      } catch (error) {
+                        addToast('Failed to change ticket status', 'error', 5000);
+                      }
+                    }}
+                    className="flex-1 py-2 px-3 bg-white/5 border border-reset-green/30 text-white rounded hover:border-reset-green focus:border-reset-green focus:outline-none text-sm"
+                  >
+                    <option value="unassigned">Unassigned</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="test-phase">Test Phase</option>
+                    <option value="more-info-needed">More Info Needed</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="archived">Archive</option>
+                  </select>
+
+                  {/* Archive Button */}
+                  {selectedTicket.status !== 'archived' && (
+                    <button
+                      onClick={async () => {
+                        if (confirm('Archive this ticket?')) {
+                          try {
+                            await archiveTicket(selectedTicket.id);
+                            setSelectedTicket({
+                              ...selectedTicket,
+                              status: 'archived',
+                            });
+                            addToast('Ticket archived', 'success', 3000);
+                          } catch (error) {
+                            addToast('Failed to archive ticket', 'error', 5000);
+                          }
+                        }
+                      }}
+                      className="py-2 px-3 bg-gray-600 text-white rounded hover:bg-gray-600/80 transition-colors font-bold text-sm"
+                    >
+                      Archive
+                    </button>
+                  )}
+
+                  {/* Delete Button */}
+                  <button
+                    onClick={async () => {
+                      if (confirm('Delete this ticket permanently? This cannot be undone!')) {
+                        try {
+                          await deleteTicketById(selectedTicket.id);
+                          setSelectedTicket(null);
+                          addToast('Ticket deleted', 'success', 3000);
+                        } catch (error) {
+                          addToast('Failed to delete ticket', 'error', 5000);
+                        }
+                      }
+                    }}
+                    className="py-2 px-3 bg-red-600 text-white rounded hover:bg-red-600/80 transition-colors font-bold text-sm"
+                  >
+                    Delete
+                  </button>
+
+                  {selectedTicket.status === 'resolved' && selectedTicket.resolvedAt && (
                     <p className="text-gray-400 text-sm">Resolved on {selectedTicket.resolvedAt}</p>
                   )}
                 </div>

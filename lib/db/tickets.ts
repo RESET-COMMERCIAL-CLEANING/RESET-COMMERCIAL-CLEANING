@@ -34,7 +34,7 @@ export interface SupportTicket {
   subject: string;
   message: string;
   createdAt: Timestamp;
-  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved';
+  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved' | 'archived';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   response?: string;
   resolvedAt?: Timestamp;
@@ -56,13 +56,19 @@ export const getTicket = async (ticketId: string): Promise<SupportTicket | null>
 
 export const getAllTickets = async (): Promise<SupportTicket[]> => {
   const querySnapshot = await getDocs(ticketsCollection);
-  return querySnapshot.docs.map(doc => doc.data() as SupportTicket);
+  return querySnapshot.docs.map(doc => ({
+    ...doc.data() as SupportTicket,
+    id: doc.id,
+  }));
 };
 
 export const getTicketsByAssignee = async (assigneeId: string): Promise<SupportTicket[]> => {
   const q = query(ticketsCollection, where('assignedTo', '==', assigneeId));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data() as SupportTicket);
+  return querySnapshot.docs.map(doc => ({
+    ...doc.data() as SupportTicket,
+    id: doc.id,
+  }));
 };
 
 export const createTicket = async (data: Omit<SupportTicket, 'id' | 'createdAt'>): Promise<SupportTicket> => {
@@ -87,7 +93,10 @@ export const deleteTicket = async (ticketId: string): Promise<void> => {
 
 export const subscribeToTickets = (callback: (tickets: SupportTicket[]) => void) => {
   return onSnapshot(ticketsCollection, (querySnapshot) => {
-    const tickets = querySnapshot.docs.map(doc => doc.data() as SupportTicket);
+    const tickets = querySnapshot.docs.map(doc => ({
+      ...doc.data() as SupportTicket,
+      id: doc.id,
+    }));
     callback(tickets);
   });
 };
@@ -95,7 +104,10 @@ export const subscribeToTickets = (callback: (tickets: SupportTicket[]) => void)
 export const subscribeToTicketsByAssignee = (assigneeId: string, callback: (tickets: SupportTicket[]) => void) => {
   const q = query(ticketsCollection, where('assignedTo', '==', assigneeId));
   return onSnapshot(q, (querySnapshot) => {
-    const tickets = querySnapshot.docs.map(doc => doc.data() as SupportTicket);
+    const tickets = querySnapshot.docs.map(doc => ({
+      ...doc.data() as SupportTicket,
+      id: doc.id,
+    }));
     callback(tickets);
   });
 };
@@ -154,4 +166,18 @@ export const deleteAllTickets = async (): Promise<void> => {
     console.error('❌ Failed to delete tickets:', error);
     throw error;
   }
+};
+
+export const archiveTicket = async (ticketId: string): Promise<void> => {
+  const docRef = doc(ticketsCollection, ticketId);
+  await updateDoc(docRef, {
+    status: 'archived' as any,
+  });
+};
+
+export const deleteTicketById = async (ticketId: string): Promise<void> => {
+  if (!ticketId) {
+    throw new Error('Cannot delete ticket without ID');
+  }
+  await deleteTicket(ticketId);
 };
