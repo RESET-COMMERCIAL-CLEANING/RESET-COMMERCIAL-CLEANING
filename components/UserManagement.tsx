@@ -217,7 +217,7 @@ export default function UserManagement() {
     try {
       const newPassword = resetPassword(id);
       if (newPassword) {
-        await updateUser(id, { tempPassword: newPassword });
+        await updateUser(id, { tempPassword: newPassword, password: newPassword, requiresPasswordChange: true });
         setModal({
           type: 'success',
           title: 'Password Reset',

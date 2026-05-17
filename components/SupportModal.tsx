@@ -3,15 +3,20 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { X, Send, AlertCircle } from 'lucide-react';
+import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
+import { SupportTicket } from '@/lib/db/tickets';
 
 interface SupportModalProps {
   isOpen: boolean;
   onClose: () => void;
   userName: string;
   userEmail: string;
+  userId: string;
+  userType: 'client' | 'subcontractor' | 'business-owner';
+  source?: SupportTicket['source'];
 }
 
-export function SupportModal({ isOpen, onClose, userName, userEmail }: SupportModalProps) {
+export function SupportModal({ isOpen, onClose, userName, userEmail, userId, userType, source = 'contact-support' }: SupportModalProps) {
   const [supportForm, setSupportForm] = useState({
     name: userName,
     email: userEmail,
@@ -21,28 +26,53 @@ export function SupportModal({ isOpen, onClose, userName, userEmail }: SupportMo
   });
   const [supportSubmitted, setSupportSubmitted] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSupportSubmit = () => {
+  const handleSupportSubmit = async () => {
     if (!supportForm.subject.trim() || !supportForm.message.trim()) {
       setValidationError('Please fill in all required fields');
       return;
     }
     setValidationError('');
+    setIsSubmitting(true);
 
-    setSupportSubmitted(true);
-
-    setTimeout(() => {
-      onClose();
-      setSupportForm({
-        name: userName,
-        email: userEmail,
-        subject: '',
-        category: 'general',
-        message: ''
+    try {
+      const ticketNumber = await generateTicketNumber();
+      await createTicket({
+        ticketNumber,
+        userId,
+        userName: supportForm.name,
+        userEmail: supportForm.email,
+        userType,
+        category: supportForm.category,
+        subject: supportForm.subject,
+        message: supportForm.message,
+        priority: 'medium',
+        status: 'unassigned',
+        source,
+        attachments: [],
       });
-      setSupportSubmitted(false);
-      setValidationError('');
-    }, 2000);
+
+      setSupportSubmitted(true);
+
+      setTimeout(() => {
+        onClose();
+        setSupportForm({
+          name: userName,
+          email: userEmail,
+          subject: '',
+          category: 'general',
+          message: ''
+        });
+        setSupportSubmitted(false);
+        setValidationError('');
+        setIsSubmitting(false);
+      }, 2000);
+    } catch (error: any) {
+      console.error('❌ Failed to create support ticket:', error);
+      setValidationError(`Failed to submit ticket: ${error.message || 'Unknown error'}`);
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -185,10 +215,11 @@ export function SupportModal({ isOpen, onClose, userName, userEmail }: SupportMo
               </button>
               <button
                 onClick={handleSupportSubmit}
-                className="flex-1 py-2 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="flex-1 py-2 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send size={14} />
-                Submit Ticket
+                {isSubmitting ? 'Submitting...' : 'Submit Ticket'}
               </button>
             </div>
           </>

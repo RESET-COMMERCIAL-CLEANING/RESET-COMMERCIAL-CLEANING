@@ -9,6 +9,7 @@ import { logout } from '@/lib/auth';
 import { uploadProfilePicture } from '@/lib/storage';
 import { updateUser, getUser } from '@/lib/db/users';
 import { updateSupportMember, getSupportTeamMember } from '@/lib/db/supportTeam';
+import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,6 +19,7 @@ export function Navbar() {
   const [supportForm, setSupportForm] = useState({ name: '', email: '', message: '' });
   const [supportSubmitted, setSupportSubmitted] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const [isSubmittingSupport, setIsSubmittingSupport] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const profilePanelRef = useRef<HTMLDivElement>(null);
@@ -152,13 +154,48 @@ export function Navbar() {
     }
   };
 
-  const handleSupportSubmit = () => {
-    setSupportSubmitted(true);
-    setTimeout(() => {
-      setShowSupportModal(false);
-      setSupportForm({ name: '', email: '', message: '' });
-      setSupportSubmitted(false);
-    }, 2000);
+  const handleSupportSubmit = async () => {
+    if (!supportForm.name.trim() || !supportForm.email.trim() || !supportForm.message.trim()) {
+      return;
+    }
+
+    if (!loggedInUser?.id) {
+      console.error('❌ No logged in user');
+      return;
+    }
+
+    setIsSubmittingSupport(true);
+
+    try {
+      const userType = loggedInUser.role === 'subcontractor' ? 'subcontractor' : 'client';
+      const ticketNumber = await generateTicketNumber();
+
+      await createTicket({
+        ticketNumber,
+        userId: loggedInUser.id,
+        userName: supportForm.name,
+        userEmail: supportForm.email,
+        userType,
+        category: 'general',
+        subject: 'Support Request',
+        message: supportForm.message,
+        priority: 'low',
+        status: 'unassigned',
+        source: 'contact-support',
+        attachments: [],
+      });
+
+      setSupportSubmitted(true);
+      setTimeout(() => {
+        setShowSupportModal(false);
+        setSupportForm({ name: '', email: '', message: '' });
+        setSupportSubmitted(false);
+        setIsSubmittingSupport(false);
+      }, 2000);
+    } catch (error) {
+      console.error('❌ Failed to submit support ticket:', error);
+      setIsSubmittingSupport(false);
+    }
   };
 
   return (
@@ -631,9 +668,10 @@ export function Navbar() {
                     </button>
                     <button
                       onClick={handleSupportSubmit}
-                      className="flex-1 py-2 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold"
+                      disabled={isSubmittingSupport}
+                      className="flex-1 py-2 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Send
+                      {isSubmittingSupport ? 'Sending...' : 'Send'}
                     </button>
                   </div>
                 </>

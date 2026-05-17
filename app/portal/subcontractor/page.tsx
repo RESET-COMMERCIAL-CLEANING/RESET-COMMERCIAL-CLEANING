@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout, getUserProfile } from '@/lib/auth';
 import { uploadBeforeAfterPhoto } from '@/lib/storage';
+import { SupportModal } from '@/components/SupportModal';
 
 interface Notification {
   id: string;
@@ -55,20 +56,33 @@ export default function SubcontractorPortal() {
   const router = useRouter();
   const [selectedContract, setSelectedContract] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Check authentication
   useEffect(() => {
     const userJson = localStorage.getItem('currentUser');
-    if (!userJson) {
+    const userProfile = localStorage.getItem('userProfile');
+    if (!userJson && !userProfile) {
       router.push('/login');
       return;
     }
 
     try {
-      const user = JSON.parse(userJson);
-      if (user.isSuperuser || user.role !== 'subcontractor') {
+      const user = JSON.parse(userJson || '{}');
+      const profile = JSON.parse(userProfile || '{}');
+
+      if (user.isSuperuser || (user.role && user.role !== 'subcontractor')) {
         router.push('/login');
+        return;
       }
+
+      // Set current user for support modal
+      setCurrentUser({
+        id: profile.id || user.id,
+        name: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || user.name || 'User',
+        email: profile.email || user.email || '',
+      });
     } catch {
       router.push('/login');
     }
@@ -470,7 +484,7 @@ export default function SubcontractorPortal() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Your Extended Contracts</h2>
             <button
-              onClick={() => addNotification('Connecting you with support to discuss your extended contracts...', 'info')}
+              onClick={() => setShowSupportModal(true)}
               className="px-4 py-2 bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 text-sm font-bold transition-colors flex items-center gap-2"
             >
               <MessageSquare size={16} />
@@ -520,7 +534,7 @@ export default function SubcontractorPortal() {
 
                 {/* Contract-specific support button */}
                 <button
-                  onClick={() => addNotification(`Support for ${contract.client} contract requested. Response within 1 hour.`, 'success')}
+                  onClick={() => setShowSupportModal(true)}
                   className="w-full mt-3 py-2 bg-reset-green/10 text-reset-green rounded-lg hover:bg-reset-green/20 text-xs font-bold transition-colors flex items-center justify-center gap-2"
                 >
                   <MessageSquare size={14} />
@@ -970,6 +984,19 @@ export default function SubcontractorPortal() {
           </div>
         </div>
       </div>
+
+      {/* Support Modal */}
+      {currentUser && (
+        <SupportModal
+          isOpen={showSupportModal}
+          onClose={() => setShowSupportModal(false)}
+          userName={currentUser.name}
+          userEmail={currentUser.email}
+          userId={currentUser.id}
+          userType="subcontractor"
+          source="subcontractor-portal"
+        />
+      )}
     </div>
   );
 }
