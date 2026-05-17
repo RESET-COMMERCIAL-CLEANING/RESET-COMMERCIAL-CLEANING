@@ -27,7 +27,10 @@ export function Navbar() {
   const isAdminPortal = pathname.includes('/portal/admin') || pathname.includes('/portal/superuser-login');
   const isSupportPortal = pathname.includes('/portal/support-member');
   const isSupportLogin = pathname.includes('/portal/support-login');
-  const isAuthenticated = isPortalPage && loggedInUser;
+  const isClientLogin = pathname.includes('/login');
+  const isSuperuserLogin = pathname.includes('/superuser-login');
+  const isLoginPage = isSupportLogin || isClientLogin || isSuperuserLogin;
+  const isAuthenticated = isPortalPage && loggedInUser && !isLoginPage;
 
   // Get logged-in user from localStorage
   useEffect(() => {

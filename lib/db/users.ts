@@ -57,12 +57,18 @@ export const getUsersByRole = async (role: 'client' | 'subcontractor'): Promise<
 };
 
 export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'createdAt'>): Promise<UserProfile> => {
+  // Filter out undefined values - Firestore doesn't accept undefined
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([_, value]) => value !== undefined && value !== null && value !== '')
+  );
+
   const newUser: UserProfile = {
-    ...data,
+    ...cleanData,
     id: uid,
     createdAt: Timestamp.now(),
     requiresPasswordChange: true,
-  };
+  } as UserProfile;
+
   await setDoc(doc(usersCollection, uid), newUser);
   return newUser;
 };

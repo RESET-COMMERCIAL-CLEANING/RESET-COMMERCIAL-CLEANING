@@ -572,27 +572,38 @@ export default function AdminPortal() {
                       value={selectedTicket.assignedTo || ''}
                       onChange={async (e) => {
                         const selected = e.target.value;
-                        if (selected) {
-                          const member = supportTeamMembers.find(m => m.id === selected);
-                          try {
-                            console.log('🎯 Assigning ticket to:', member?.name);
+                        if (!selected || !selectedTicket?.id) {
+                          console.error('❌ Missing ticket ID or selected member');
+                          return;
+                        }
 
-                            // Update ticket assignment
-                            await updateTicket(selectedTicket.id, {
-                              assignedTo: selected,
-                              assignedToName: member?.name || '',
-                              status: 'assigned' as const,
-                            });
+                        const member = supportTeamMembers.find(m => m.id === selected);
+                        if (!member) {
+                          console.error('❌ Support member not found');
+                          return;
+                        }
 
-                            // Log the assignment activity
+                        try {
+                          console.log('🎯 Assigning ticket to:', member?.name);
+
+                          // Update ticket assignment
+                          await updateTicket(selectedTicket.id, {
+                            assignedTo: selected,
+                            assignedToName: member.name,
+                            status: 'assigned' as const,
+                          });
+
+                          // Log the assignment activity
+                          if (user?.id) {
                             await logTicketAssignment({
                               ticketId: selectedTicket.id,
                               ticketNumber: selectedTicket.ticketNumber,
-                              assignedById: user?.id || 'admin',
-                              assignedByName: user?.name || 'Admin',
+                              assignedById: user.id,
+                              assignedByName: user.name || 'Admin',
                               assignedToId: selected,
-                              assignedToName: member?.name || '',
+                              assignedToName: member.name,
                             });
+                          }
 
                             // Send assignment notification email
                             const assignmentEmail = formatTicketAssignmentEmail({
