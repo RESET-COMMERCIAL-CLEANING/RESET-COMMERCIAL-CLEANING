@@ -12,6 +12,15 @@ import { logActivity } from '@/lib/db/activity';
 import { formatTicketResponseEmail, sendEmail } from '@/lib/email';
 import { logTicketResponse, logEmailSent } from '@/lib/db/activity-log';
 
+interface TicketComment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'superuser' | 'support-member';
+  message: string;
+  createdAt: any;
+}
+
 interface SupportTicket {
   id: string;
   ticketNumber: string;
@@ -30,6 +39,7 @@ interface SupportTicket {
   attachments?: Attachment[];
   assignedTo?: string;
   assignedToName?: string;
+  comments?: TicketComment[];
 }
 
 export default function SupportMemberPortal() {
@@ -63,7 +73,6 @@ export default function SupportMemberPortal() {
 
       await updateTicket(selectedTicket.id, {
         response: responseText,
-        status: 'response-given' as const,
         attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined,
       });
 
@@ -131,12 +140,7 @@ export default function SupportMemberPortal() {
     if (!moreInfoText.trim() || !selectedTicket) return;
 
     try {
-      // Update ticket status to 'more-info-needed'
-      await updateTicket(selectedTicket.id, {
-        status: 'more-info-needed' as const,
-      });
-
-      // Add internal comment for superuser
+      // Add internal comment for superuser (no status change)
       if (member?.id) {
         await addTicketComment(
           selectedTicket.id,
@@ -157,7 +161,7 @@ export default function SupportMemberPortal() {
         );
       }
 
-      setSuccessMessage('Marked ticket as needing more information. Superuser will respond in comments.');
+      setSuccessMessage('Question sent to superuser. They will respond in the internal comments.');
       setShowSuccessModal(true);
       setMoreInfoText('');
       setShowMoreInfoModal(false);
@@ -241,57 +245,6 @@ export default function SupportMemberPortal() {
     }
   };
 
-  const getNextStatus = (currentStatus: string): string | null => {
-    // Support members can only move tickets to: test-phase, more-info-needed, or resolved
-    // From assigned state, they can move to test-phase or more-info-needed
-    // From test-phase or more-info-needed, they can move to resolved
-    const statusFlow: { [key: string]: string[] } = {
-      'assigned': ['test-phase', 'more-info-needed'],
-      'test-phase': ['more-info-needed', 'resolved'],
-      'more-info-needed': ['test-phase', 'resolved'],
-      'resolved': [],
-    };
-    const nextStatuses = statusFlow[currentStatus];
-    return nextStatuses && nextStatuses.length > 0 ? nextStatuses[0] : null;
-  };
-
-  const getAllowedNextStatuses = (currentStatus: string): string[] => {
-    const statusFlow: { [key: string]: string[] } = {
-      'assigned': ['test-phase', 'more-info-needed'],
-      'test-phase': ['more-info-needed', 'resolved'],
-      'more-info-needed': ['test-phase', 'resolved'],
-      'resolved': [],
-    };
-    return statusFlow[currentStatus] || [];
-  };
-
-  const handleStatusChange = async (ticket: SupportTicket, newStatus: string) => {
-    const allowedStatuses = getAllowedNextStatuses(ticket.status);
-    if (!allowedStatuses.includes(newStatus)) return;
-
-    try {
-      await updateTicket(ticket.id, {
-        status: newStatus as any,
-        resolvedAt: newStatus === 'resolved' ? Timestamp.now() : undefined,
-      });
-
-      if (member?.id) {
-        await logActivity({
-          memberId: member.id,
-          memberName: member.name,
-          action: `Changed ticket status to ${newStatus}`,
-          ticketId: ticket.id,
-          details: `Status updated from ${ticket.status} to ${newStatus}`,
-        });
-      }
-
-      setSuccessMessage(`Ticket status updated to ${newStatus.replace('-', ' ')}!`);
-      setShowSuccessModal(true);
-      setTimeout(() => setShowSuccessModal(false), 2000);
-    } catch (error) {
-      console.error('Failed to change ticket status:', error);
-    }
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -549,53 +502,59 @@ export default function SupportMemberPortal() {
                   </div>
                 )}
 
+                {/* Internal Comments Section */}
+                <div className="mb-6 pb-6 border-b border-reset-green/20">
+                  <h4 className="font-bold text-white mb-3 text-sm flex items-center gap-2">
+                    <MessageSquare size={16} />
+                    Internal Comments from Superuser
+                  </h4>
+                  {selectedTicket.comments && selectedTicket.comments.length > 0 ? (
+                    <div className="space-y-3 max-h-48 overflow-y-auto">
+                      {selectedTicket.comments.map((comment) => {
+                        // Only show superuser comments
+                        if (comment.authorRole !== 'superuser') return null;
+                        return (
+                          <div key={comment.id} className="p-3 rounded-lg bg-reset-green/10 border border-reset-green/30 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-reset-green">{comment.authorName}</span>
+                                <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400">
+                                  🔑 Admin
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {comment.createdAt?.toDate?.()?.toLocaleString() || comment.createdAt || 'Just now'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-300">{comment.message}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 italic">No comments from superuser yet</p>
+                  )}
+                </div>
+
                 {/* Action Buttons */}
                 <div className="flex gap-3 mt-auto pt-6 border-t border-reset-green/20 flex-wrap">
-                  {selectedTicket.status !== 'resolved' && (
-                    <>
-                      {/* Status Change Dropdown */}
-                      {getAllowedNextStatuses(selectedTicket.status).length > 0 && (
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              handleStatusChange(selectedTicket, e.target.value);
-                            }
-                          }}
-                          className="flex-1 py-2 bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-bold text-sm px-3"
-                        >
-                          <option value="">Change Status...</option>
-                          {getAllowedNextStatuses(selectedTicket.status).map(status => (
-                            <option key={status} value={status}>
-                              {status.replace('-', ' ').charAt(0).toUpperCase() + status.replace('-', ' ').slice(1)}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                  {!showResponseForm ? (
+                    <button
+                      onClick={() => setShowResponseForm(true)}
+                      className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
+                    >
+                      <MessageSquare size={16} />
+                      Send Response to Customer
+                    </button>
+                  ) : null}
 
-                      {!showResponseForm ? (
-                        <button
-                          onClick={() => setShowResponseForm(true)}
-                          className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
-                        >
-                          <MessageSquare size={16} />
-                          Add Response
-                        </button>
-                      ) : null}
-
-                      <button
-                        onClick={() => setShowMoreInfoModal(true)}
-                        className="flex-1 py-2 bg-purple-600 text-white rounded hover:bg-purple-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
-                      >
-                        <HelpCircle size={16} />
-                        Need Info
-                      </button>
-                    </>
-                  )}
-
-                  {selectedTicket.status === 'resolved' && selectedTicket.resolvedAt && (
-                    <p className="text-reset-green font-bold text-sm">✓ Resolved on {selectedTicket.resolvedAt}</p>
-                  )}
+                  <button
+                    onClick={() => setShowMoreInfoModal(true)}
+                    className="flex-1 py-2 bg-purple-600 text-white rounded hover:bg-purple-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
+                  >
+                    <HelpCircle size={16} />
+                    Ask Superuser for Info
+                  </button>
                 </div>
 
                 {/* Response Form */}
