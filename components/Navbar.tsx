@@ -81,14 +81,14 @@ export function Navbar() {
   }, [showProfilePanel]);
 
   const [profile, setProfile] = useState({
-    name: 'Sarah Johnson',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-    company: 'Tech Startup HQ',
-    email: 'admin@techstartuphq.com',
-    phone: '+61 2 9234 5678',
-    address: '123 Tech Street, Sydney NSW 2000',
-    industry: 'Technology',
-    squareFeet: '5,000 sqft',
+    name: '',
+    avatar: '',
+    company: '',
+    email: '',
+    phone: '',
+    address: '',
+    industry: '',
+    squareFeet: '',
   });
 
   const [editProfile, setEditProfile] = useState(profile);

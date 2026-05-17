@@ -28,12 +28,15 @@ export default function SupportLogin() {
 
     setIsLoading(true);
     try {
+      console.log('🔄 Updating password for member:', memberData.id);
       // Update password in Firestore and mark password change as complete
       const memberRef = doc(db, 'supportTeam', memberData.id);
       await updateDoc(memberRef, {
         password: newPassword,
         requiresPasswordChange: false
       });
+
+      console.log('✅ Password updated successfully');
 
       // Complete login with new password
       localStorage.setItem(
@@ -49,7 +52,7 @@ export default function SupportLogin() {
 
       router.push('/portal/support-member');
     } catch (error) {
-      console.error('Failed to update password:', error);
+      console.error('❌ Failed to update password:', error);
       setError('Failed to update password. Please try again.');
       setIsLoading(false);
     }
@@ -85,12 +88,21 @@ export default function SupportLogin() {
       const member = snapshot.docs[0].data();
       const memberId = snapshot.docs[0].id;
 
+      console.log('🔐 Support member found:', {
+        name: member.name,
+        email: member.email,
+        requiresPasswordChange: member.requiresPasswordChange,
+        memberId
+      });
+
       // Check if password change is required (first login)
       if (member.requiresPasswordChange) {
+        console.log('⚠️ Password change required, showing password change form');
         setMemberData({ ...member, id: memberId });
         setShowPasswordChange(true);
         setIsLoading(false);
       } else {
+        console.log('✅ Password already changed, completing login');
         // Complete login
         localStorage.setItem(
           'supportMember',
