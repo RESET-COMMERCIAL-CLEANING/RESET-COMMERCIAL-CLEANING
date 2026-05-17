@@ -23,7 +23,7 @@ interface SupportTicket {
   subject: string;
   message: string;
   createdAt: string;
-  status: 'assigned' | 'open' | 'in-progress' | 'response-given' | 'resolved';
+  status: 'unassigned' | 'assigned' | 'test-phase' | 'more-info-needed' | 'response-given' | 'resolved';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   response?: string;
   resolvedAt?: string;
@@ -39,194 +39,13 @@ export default function SupportMemberPortal() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [showResponseForm, setShowResponseForm] = useState(false);
   const [responseText, setResponseText] = useState('');
-  const [filter, setFilter] = useState<'all' | 'open' | 'in-progress' | 'resolved'>('all');
+  const [filter, setFilter] = useState<'all' | 'test-phase' | 'more-info-needed' | 'resolved'>('all');
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [showMoreInfoModal, setShowMoreInfoModal] = useState(false);
   const [moreInfoText, setMoreInfoText] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-
-  // Initialize tickets from localStorage
-  const initializeTickets = (): SupportTicket[] => {
-    if (typeof window === 'undefined') return [];
-    const savedTickets = localStorage.getItem('supportTickets');
-    if (savedTickets) {
-      return JSON.parse(savedTickets);
-    }
-    // Fallback mock data with tickets assigned to different team members
-    return [
-      {
-        id: '1',
-        ticketNumber: 'TKT-001',
-        userId: 'client-1',
-        userName: 'Sarah Johnson',
-        userEmail: 'admin@techstartuphq.com',
-        userType: 'client',
-        category: 'billing',
-        subject: 'Extra charge on invoice',
-        message: 'I noticed an extra charge on my monthly invoice that I do not recognize. Please review my March invoice for the service on March 5th.',
-        createdAt: 'Mar 13, 2025, 2:30 PM',
-        status: 'assigned',
-        priority: 'medium',
-        assignedTo: 'support-1',
-        assignedToName: 'John Support',
-      },
-      {
-        id: '2',
-        ticketNumber: 'TKT-002',
-        userId: 'sub-1',
-        userName: 'John Smith',
-        userEmail: 'john@elitecrew.com',
-        userType: 'subcontractor',
-        category: 'job',
-        subject: 'Job assignment issue',
-        message: 'I did not receive the job assignment for the deep cleaning on March 15th. Please check the system and resend the details.',
-        createdAt: 'Mar 12, 2025, 10:15 AM',
-        status: 'in-progress',
-        priority: 'high',
-        response: 'We are investigating this issue. Checking the assignment system now.',
-        assignedTo: 'support-1',
-        assignedToName: 'John Support',
-      },
-      {
-        id: '3',
-        ticketNumber: 'TKT-003',
-        userId: 'client-2',
-        userName: 'Michael Chen',
-        userEmail: 'facilities@medicalcenter.com',
-        userType: 'client',
-        category: 'quality',
-        subject: 'Quality concern about cleaning',
-        message: 'The cleaning on March 10th did not meet our standards. Some areas were not properly cleaned and the bathrooms need attention.',
-        createdAt: 'Mar 11, 2025, 9:00 AM',
-        status: 'resolved',
-        priority: 'high',
-        response: 'We apologize for the quality issues. We have assigned our senior team for your next service.',
-        resolvedAt: 'Mar 12, 2025, 11:30 AM',
-        assignedTo: 'support-2',
-        assignedToName: 'Maria Support',
-      },
-      {
-        id: '4',
-        ticketNumber: 'TKT-004',
-        userId: 'sub-2',
-        userName: 'Maria Rodriguez',
-        userEmail: 'maria@proservices.com',
-        userType: 'subcontractor',
-        category: 'technical',
-        subject: 'Cannot access portal',
-        message: 'I cannot log into the portal. Getting an error message saying "Invalid credentials" even after password reset.',
-        createdAt: 'Mar 10, 2025, 3:45 PM',
-        status: 'resolved',
-        priority: 'urgent',
-        response: 'Password has been reset and temporary credentials sent via email. Please check spam folder.',
-        resolvedAt: 'Mar 10, 2025, 5:00 PM',
-        assignedTo: 'support-2',
-        assignedToName: 'Maria Support',
-      },
-      {
-        id: '5',
-        ticketNumber: 'TKT-005',
-        userId: 'client-3',
-        userName: 'James Wilson',
-        userEmail: 'james@corporation.com',
-        userType: 'client',
-        category: 'billing',
-        subject: 'Invoice clarification needed',
-        message: 'Can you explain the breakdown of charges on our latest invoice? We need this for our accounting records.',
-        createdAt: 'Mar 14, 2025, 11:20 AM',
-        status: 'assigned',
-        priority: 'medium',
-        assignedTo: 'support-3',
-        assignedToName: 'Alex Chen',
-      },
-      {
-        id: '6',
-        ticketNumber: 'TKT-006',
-        userId: 'sub-3',
-        userName: 'David Brown',
-        userEmail: 'david@services.com',
-        userType: 'subcontractor',
-        category: 'job',
-        subject: 'Schedule change request',
-        message: 'Can I reschedule the job on March 20th to March 22nd? I have a conflict with another booking.',
-        createdAt: 'Mar 13, 2025, 8:45 AM',
-        status: 'in-progress',
-        priority: 'low',
-        response: 'Checking availability for March 22nd. Will confirm within 24 hours.',
-        assignedTo: 'support-3',
-        assignedToName: 'Alex Chen',
-      },
-      {
-        id: '7',
-        ticketNumber: 'TKT-007',
-        userId: 'client-4',
-        userName: 'Lisa Anderson',
-        userEmail: 'lisa@office.com',
-        userType: 'client',
-        category: 'quality',
-        subject: 'Excellent service feedback',
-        message: 'Just wanted to compliment your team on the excellent cleaning job. The attention to detail was outstanding!',
-        createdAt: 'Mar 13, 2025, 5:30 PM',
-        status: 'assigned',
-        priority: 'low',
-        assignedTo: 'support-4',
-        assignedToName: 'Sarah Williams',
-      },
-      {
-        id: '8',
-        ticketNumber: 'TKT-008',
-        userId: 'sub-4',
-        userName: 'Emma Taylor',
-        userEmail: 'emma@cleaning.com',
-        userType: 'subcontractor',
-        category: 'technical',
-        subject: 'Mobile app not syncing',
-        message: 'The mobile app is not syncing my completed jobs with the system. Last sync was 2 days ago.',
-        createdAt: 'Mar 12, 2025, 2:15 PM',
-        status: 'in-progress',
-        priority: 'high',
-        response: 'This appears to be a sync issue. Try reinstalling the app and logging in again.',
-        assignedTo: 'support-4',
-        assignedToName: 'Sarah Williams',
-      },
-      {
-        id: '9',
-        ticketNumber: 'TKT-009',
-        userId: 'client-5',
-        userName: 'Robert Martinez',
-        userEmail: 'robert@enterprise.com',
-        userType: 'client',
-        category: 'billing',
-        subject: 'Payment method update',
-        message: 'Can I update the payment method on my account? I have a new corporate card.',
-        createdAt: 'Mar 14, 2025, 9:00 AM',
-        status: 'assigned',
-        priority: 'low',
-        assignedTo: 'support-5',
-        assignedToName: 'David Lee',
-      },
-      {
-        id: '10',
-        ticketNumber: 'TKT-010',
-        userId: 'sub-5',
-        userName: 'Nicole Garcia',
-        userEmail: 'nicole@team.com',
-        userType: 'subcontractor',
-        category: 'job',
-        subject: 'Training request',
-        message: 'Can I get trained on the new cleaning products? I want to ensure I\'m using them correctly.',
-        createdAt: 'Mar 11, 2025, 4:20 PM',
-        status: 'resolved',
-        priority: 'medium',
-        response: 'Training session scheduled for March 20th at 2 PM. Check your email for details.',
-        resolvedAt: 'Mar 12, 2025, 10:00 AM',
-        assignedTo: 'support-5',
-        assignedToName: 'David Lee',
-      },
-    ];
-  };
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
@@ -308,55 +127,68 @@ export default function SupportMemberPortal() {
     }
   };
 
-  const handleRequestMoreInfo = () => {
+  const handleRequestMoreInfo = async () => {
     if (!moreInfoText.trim() || !selectedTicket) return;
 
-    // Log activity for requesting more info
-    if (member?.id) {
-      logSupportActivity(
-        member.id,
-        'Requested more information',
-        selectedTicket.ticketNumber,
-        moreInfoText
-      );
+    try {
+      // Update ticket status to 'more-info-needed'
+      await updateTicket(selectedTicket.id, {
+        status: 'more-info-needed' as const,
+        response: moreInfoText,
+      });
+
+      // Log activity for requesting more info
+      if (member?.id) {
+        logSupportActivity(
+          member.id,
+          'Requested more information',
+          selectedTicket.ticketNumber,
+          moreInfoText
+        );
+      }
+
+      setSuccessMessage('Marked ticket as needing more information.');
+      setShowSuccessModal(true);
+      setMoreInfoText('');
+      setShowMoreInfoModal(false);
+
+      setTimeout(() => setShowSuccessModal(false), 3000);
+    } catch (error) {
+      console.error('Failed to request more info:', error);
+      alert('Failed to request more information. Please try again.');
     }
-
-    setSuccessMessage('Request sent to superuser. They will contact you soon.');
-    setShowSuccessModal(true);
-    setMoreInfoText('');
-    setShowMoreInfoModal(false);
-
-    setTimeout(() => setShowSuccessModal(false), 3000);
   };
 
-  const handleResolve = () => {
+  const handleResolve = async () => {
     if (!selectedTicket) return;
 
-    const resolvedTicket = {
-      ...selectedTicket,
-      status: 'resolved' as const,
-      resolvedAt: new Date().toLocaleString(),
-    };
+    try {
+      // Update ticket status to 'resolved' in Firestore
+      await updateTicket(selectedTicket.id, {
+        status: 'resolved' as const,
+        resolvedAt: Timestamp.now(),
+      });
 
-    setTickets(tickets.map(t =>
-      t.id === selectedTicket.id ? resolvedTicket : t
-    ));
+      // Log activity
+      if (member?.id) {
+        await logActivity({
+          memberId: member.id,
+          memberName: member.name,
+          action: 'Marked ticket as resolved',
+          ticketId: selectedTicket.id,
+          details: 'Issue resolved successfully',
+        });
+      }
 
-    // Log activity
-    if (member?.id) {
-      logSupportActivity(
-        member.id,
-        'Marked ticket as resolved',
-        selectedTicket.ticketNumber,
-        `Issue resolved successfully`
-      );
+      setSuccessMessage('Ticket marked as resolved!');
+      setShowSuccessModal(true);
+      setSelectedTicket(null);
+
+      setTimeout(() => setShowSuccessModal(false), 2000);
+    } catch (error) {
+      console.error('Failed to resolve ticket:', error);
+      alert('Failed to resolve ticket. Please try again.');
     }
-
-    setSuccessMessage('Ticket marked as resolved!');
-    setShowSuccessModal(true);
-    setSelectedTicket(null);
-
-    setTimeout(() => setShowSuccessModal(false), 2000);
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -389,9 +221,10 @@ export default function SupportMemberPortal() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'unassigned': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       case 'assigned': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'open': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'in-progress': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'test-phase': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+      case 'more-info-needed': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'response-given': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case 'resolved': return 'bg-green-500/20 text-green-400 border-green-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
@@ -399,36 +232,50 @@ export default function SupportMemberPortal() {
   };
 
   const getNextStatus = (currentStatus: string): string | null => {
-    const statusFlow: { [key: string]: string } = {
-      'assigned': 'open',
-      'open': 'in-progress',
-      'in-progress': 'response-given',
-      'response-given': 'resolved',
-      'resolved': null,
+    // Support members can only move tickets to: test-phase, more-info-needed, or resolved
+    // From assigned state, they can move to test-phase or more-info-needed
+    // From test-phase or more-info-needed, they can move to resolved
+    const statusFlow: { [key: string]: string[] } = {
+      'assigned': ['test-phase', 'more-info-needed'],
+      'test-phase': ['more-info-needed', 'resolved'],
+      'more-info-needed': ['test-phase', 'resolved'],
+      'resolved': [],
     };
-    return statusFlow[currentStatus] || null;
+    const nextStatuses = statusFlow[currentStatus];
+    return nextStatuses && nextStatuses.length > 0 ? nextStatuses[0] : null;
   };
 
-  const handleStatusChange = async (ticket: SupportTicket) => {
-    const nextStatus = getNextStatus(ticket.status);
-    if (!nextStatus) return;
+  const getAllowedNextStatuses = (currentStatus: string): string[] => {
+    const statusFlow: { [key: string]: string[] } = {
+      'assigned': ['test-phase', 'more-info-needed'],
+      'test-phase': ['more-info-needed', 'resolved'],
+      'more-info-needed': ['test-phase', 'resolved'],
+      'resolved': [],
+    };
+    return statusFlow[currentStatus] || [];
+  };
+
+  const handleStatusChange = async (ticket: SupportTicket, newStatus: string) => {
+    const allowedStatuses = getAllowedNextStatuses(ticket.status);
+    if (!allowedStatuses.includes(newStatus)) return;
 
     try {
       await updateTicket(ticket.id, {
-        status: nextStatus as any,
+        status: newStatus as any,
+        resolvedAt: newStatus === 'resolved' ? Timestamp.now() : undefined,
       });
 
       if (member?.id) {
         await logActivity({
           memberId: member.id,
           memberName: member.name,
-          action: `Changed ticket status to ${nextStatus}`,
+          action: `Changed ticket status to ${newStatus}`,
           ticketId: ticket.id,
-          details: `Status updated from ${ticket.status} to ${nextStatus}`,
+          details: `Status updated from ${ticket.status} to ${newStatus}`,
         });
       }
 
-      setSuccessMessage(`Ticket status updated to ${nextStatus.replace('-', ' ')}!`);
+      setSuccessMessage(`Ticket status updated to ${newStatus.replace('-', ' ')}!`);
       setShowSuccessModal(true);
       setTimeout(() => setShowSuccessModal(false), 2000);
     } catch (error) {
@@ -447,10 +294,10 @@ export default function SupportMemberPortal() {
   };
 
   const stats = [
-    { label: 'Assigned', value: assignedTickets.filter(t => t.status === 'assigned').length, icon: AlertCircle, color: 'text-blue-400' },
-    { label: 'In Progress', value: assignedTickets.filter(t => t.status === 'in-progress').length, icon: Clock, color: 'text-yellow-400' },
+    { label: 'In Progress', value: assignedTickets.filter(t => ['assigned', 'test-phase', 'more-info-needed'].includes(t.status)).length, icon: Clock, color: 'text-yellow-400' },
     { label: 'Resolved', value: assignedTickets.filter(t => t.status === 'resolved').length, icon: CheckCircle, color: 'text-green-400' },
-    { label: 'Total', value: assignedTickets.length, icon: MessageSquare, color: 'text-blue-400' },
+    { label: 'Test Phase', value: assignedTickets.filter(t => t.status === 'test-phase').length, icon: HelpCircle, color: 'text-indigo-400' },
+    { label: 'Total', value: assignedTickets.length, icon: MessageSquare, color: 'text-reset-green' },
   ];
 
   // Check authentication and subscribe to Firestore tickets
@@ -514,7 +361,7 @@ export default function SupportMemberPortal() {
 
         {/* Filter Tabs */}
         <div className="flex gap-3 mb-8 flex-wrap">
-          {(['all', 'open', 'in-progress', 'resolved'] as const).map((status) => (
+          {(['all', 'test-phase', 'more-info-needed', 'resolved'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
@@ -524,7 +371,7 @@ export default function SupportMemberPortal() {
                   : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/30'
               }`}
             >
-              {status === 'in-progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+              {status.replace('-', ' ').charAt(0).toUpperCase() + status.replace('-', ' ').slice(1)}
             </button>
           ))}
         </div>
@@ -588,7 +435,7 @@ export default function SupportMemberPortal() {
                       </div>
                       <div className="flex items-center justify-between mt-3">
                         <span className={`text-xs px-2 py-1 rounded-full border font-bold ${getStatusColor(ticket.status)}`}>
-                          {ticket.status === 'in-progress' ? 'In Progress' : ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
+                          {ticket.status.replace('-', ' ').charAt(0).toUpperCase() + ticket.status.replace('-', ' ').slice(1)}
                         </span>
                         <span className="text-xs text-gray-500">{ticket.userType}</span>
                       </div>
@@ -617,7 +464,7 @@ export default function SupportMemberPortal() {
                     <div className="flex items-center gap-3">
                       <h3 className="text-2xl font-bold text-white">{selectedTicket.ticketNumber}</h3>
                       <span className={`text-sm px-3 py-1 rounded-full border font-bold ${getStatusColor(selectedTicket.status)}`}>
-                        {selectedTicket.status === 'in-progress' ? 'In Progress' : selectedTicket.status.charAt(0).toUpperCase() + selectedTicket.status.slice(1)}
+                        {selectedTicket.status.replace('-', ' ').charAt(0).toUpperCase() + selectedTicket.status.replace('-', ' ').slice(1)}
                       </span>
                     </div>
                     <p className="text-gray-400 mt-2">{selectedTicket.subject}</p>
@@ -696,15 +543,24 @@ export default function SupportMemberPortal() {
                 <div className="flex gap-3 mt-auto pt-6 border-t border-reset-green/20 flex-wrap">
                   {selectedTicket.status !== 'resolved' && (
                     <>
-                      {/* Status Change Button */}
-                      {getNextStatus(selectedTicket.status) && (
-                        <button
-                          onClick={() => handleStatusChange(selectedTicket)}
-                          className="flex-1 py-2 bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
+                      {/* Status Change Dropdown */}
+                      {getAllowedNextStatuses(selectedTicket.status).length > 0 && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleStatusChange(selectedTicket, e.target.value);
+                            }
+                          }}
+                          className="flex-1 py-2 bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-bold text-sm px-3"
                         >
-                          <CheckCircle2 size={16} />
-                          Change to {getNextStatus(selectedTicket.status)?.replace('-', ' ')}
-                        </button>
+                          <option value="">Change Status...</option>
+                          {getAllowedNextStatuses(selectedTicket.status).map(status => (
+                            <option key={status} value={status}>
+                              {status.replace('-', ' ').charAt(0).toUpperCase() + status.replace('-', ' ').slice(1)}
+                            </option>
+                          ))}
+                        </select>
                       )}
 
                       {!showResponseForm ? (
@@ -722,13 +578,13 @@ export default function SupportMemberPortal() {
                         className="flex-1 py-2 bg-purple-600 text-white rounded hover:bg-purple-600/80 transition-colors font-bold flex items-center justify-center gap-2 text-sm"
                       >
                         <HelpCircle size={16} />
-                        Request More Info
+                        Need Info
                       </button>
                     </>
                   )}
 
                   {selectedTicket.status === 'resolved' && selectedTicket.resolvedAt && (
-                    <p className="text-reset-green font-bold text-sm">✓ Ticket Resolved on {selectedTicket.resolvedAt}</p>
+                    <p className="text-reset-green font-bold text-sm">✓ Resolved on {selectedTicket.resolvedAt}</p>
                   )}
                 </div>
 

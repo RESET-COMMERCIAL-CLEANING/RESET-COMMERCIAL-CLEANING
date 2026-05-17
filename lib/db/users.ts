@@ -10,6 +10,7 @@ import {
   query,
   where,
   Timestamp,
+  onSnapshot,
 } from 'firebase/firestore';
 import { generateTempPassword } from '@/lib/crypto';
 
@@ -115,4 +116,11 @@ export const deleteUser = async (uid: string): Promise<void> => {
 
 export const updateLastLogin = async (uid: string): Promise<void> => {
   await updateUser(uid, { lastLogin: Timestamp.now() });
+};
+
+export const subscribeToAllUsers = (callback: (users: UserProfile[]) => void) => {
+  return onSnapshot(usersCollection, (snapshot) => {
+    const users = snapshot.docs.map(doc => doc.data() as UserProfile);
+    callback(users);
+  });
 };

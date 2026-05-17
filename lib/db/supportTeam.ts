@@ -10,6 +10,7 @@ import {
   query,
   where,
   Timestamp,
+  onSnapshot,
 } from 'firebase/firestore';
 import { generateTempPassword } from '@/lib/crypto';
 
@@ -139,4 +140,11 @@ export const authSupportMember = async (email: string, password: string): Promis
 
   console.log('❌ Authentication failed');
   return null;
+};
+
+export const subscribeToAllSupportTeam = (callback: (members: SupportTeamMember[]) => void) => {
+  return onSnapshot(supportTeamCollection, (snapshot) => {
+    const members = snapshot.docs.map(doc => doc.data() as SupportTeamMember);
+    callback(members);
+  });
 };

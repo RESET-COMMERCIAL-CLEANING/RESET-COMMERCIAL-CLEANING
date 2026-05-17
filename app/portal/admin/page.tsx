@@ -9,7 +9,7 @@ import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
 import { subscribeToTickets, updateTicket, createTicket, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
-import { getAllSupportTeam } from '@/lib/db/supportTeam';
+import { subscribeToAllSupportTeam } from '@/lib/db/supportTeam';
 import { formatTicketResponseEmail, formatTicketAssignmentEmail, sendEmail } from '@/lib/email';
 import { logTicketResponse, logTicketAssignment, logEmailSent, logTicketResolution } from '@/lib/db/activity-log';
 import UserManagement from '@/components/UserManagement';
@@ -26,7 +26,7 @@ interface SupportTicket {
   subject: string;
   message: string;
   createdAt: string;
-  status: 'assigned' | 'open' | 'in-progress' | 'response-given' | 'resolved';
+  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   response?: string;
   resolvedAt?: string;
@@ -42,7 +42,7 @@ export default function AdminPortal() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [showResponseForm, setShowResponseForm] = useState(false);
   const [responseText, setResponseText] = useState('');
-  const [filter, setFilter] = useState<'all' | 'open' | 'in-progress' | 'resolved'>('all');
+  const [filter, setFilter] = useState<'all' | 'unassigned' | 'assigned' | 'resolved'>('all');
   const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team'>('tickets');
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
@@ -58,6 +58,8 @@ export default function AdminPortal() {
     message: '',
     category: 'general',
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+    source: 'admin-created' as 'quote' | 'contact-support' | 'business-owner-portal' | 'subcontractor-portal' | 'admin-created',
+    sourceLocation: '',
   });
 
   // Initialize tickets from localStorage or use mock data
@@ -158,8 +160,10 @@ export default function AdminPortal() {
         category: newTicketForm.category,
         subject: newTicketForm.subject,
         message: newTicketForm.message,
-        status: 'open',
+        status: 'unassigned',
         priority: newTicketForm.priority,
+        source: newTicketForm.source,
+        sourceLocation: newTicketForm.sourceLocation || undefined,
       });
 
       console.log('✅ Ticket created:', ticket.ticketNumber);
@@ -173,6 +177,8 @@ export default function AdminPortal() {
         message: '',
         category: 'general',
         priority: 'medium',
+        source: 'admin-created',
+        sourceLocation: '',
       });
       setShowCreateTicket(false);
       alert(`Ticket created successfully: ${ticket.ticketNumber}`);
@@ -300,9 +306,12 @@ export default function AdminPortal() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'unassigned': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       case 'assigned': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'open': return 'bg-red-500/20 text-red-400 border-red-500/30';
       case 'in-progress': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'test-phase': return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+      case 'more-info-needed': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'response-given': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case 'resolved': return 'bg-green-500/20 text-green-400 border-green-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
@@ -320,13 +329,13 @@ export default function AdminPortal() {
   };
 
   const stats = [
-    { label: 'Open', value: tickets.filter(t => t.status === 'open').length, icon: AlertCircle, color: 'text-red-400' },
-    { label: 'In Progress', value: tickets.filter(t => t.status === 'in-progress').length, icon: Clock, color: 'text-yellow-400' },
+    { label: 'Unassigned', value: tickets.filter(t => t.status === 'unassigned').length, icon: AlertCircle, color: 'text-gray-400' },
+    { label: 'Assigned', value: tickets.filter(t => t.status === 'assigned').length, icon: Clock, color: 'text-blue-400' },
     { label: 'Resolved', value: tickets.filter(t => t.status === 'resolved').length, icon: CheckCircle, color: 'text-green-400' },
-    { label: 'Total', value: tickets.length, icon: MessageSquare, color: 'text-blue-400' },
+    { label: 'Total', value: tickets.length, icon: MessageSquare, color: 'text-reset-green' },
   ];
 
-  // Subscribe to Firestore tickets and load support team members
+  // Subscribe to Firestore tickets and support team members in real-time
   useEffect(() => {
     // Check authentication first
     const currentUser = getCurrentUser();
@@ -339,7 +348,7 @@ export default function AdminPortal() {
 
     // Subscribe to tickets from Firestore
     try {
-      const unsubscribe = subscribeToTickets((firebaseTickets: any[]) => {
+      const unsubscribeTickets = subscribeToTickets((firebaseTickets: any[]) => {
         const mapped = firebaseTickets.map((t: any) => ({
           ...t,
           createdAt: t.createdAt?.toDate?.()?.toLocaleString() || t.createdAt || '',
@@ -349,19 +358,18 @@ export default function AdminPortal() {
         setIsLoadingTickets(false);
       });
 
-      // Load support team members
-      getAllSupportTeam().then((members: any[]) => {
+      // Subscribe to support team members in real-time
+      const unsubscribeSupportTeam = subscribeToAllSupportTeam((members: any[]) => {
         setSupportTeamMembers(members);
-      }).catch(() => {
-        console.error('Failed to load support team members');
       });
 
       return () => {
-        unsubscribe?.();
+        unsubscribeTickets?.();
+        unsubscribeSupportTeam?.();
       };
     } catch (error) {
       setIsLoadingTickets(false);
-      console.error('Failed to subscribe to tickets:', error);
+      console.error('Failed to subscribe to tickets or support team:', error);
     }
   }, [router]);
 
@@ -536,6 +544,33 @@ export default function AdminPortal() {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-300 mb-2">Source</label>
+                      <select
+                        value={newTicketForm.source}
+                        onChange={(e) => setNewTicketForm({ ...newTicketForm, source: e.target.value as 'quote' | 'contact-support' | 'business-owner-portal' | 'subcontractor-portal' | 'admin-created' })}
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white focus:border-reset-green focus:outline-none"
+                      >
+                        <option value="admin-created" className="bg-black">Admin Created</option>
+                        <option value="quote" className="bg-black">Quote Request</option>
+                        <option value="contact-support" className="bg-black">Contact Support</option>
+                        <option value="business-owner-portal" className="bg-black">Business Owner Portal</option>
+                        <option value="subcontractor-portal" className="bg-black">Subcontractor Portal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-300 mb-2">Source Location (Optional)</label>
+                      <input
+                        type="text"
+                        value={newTicketForm.sourceLocation}
+                        onChange={(e) => setNewTicketForm({ ...newTicketForm, sourceLocation: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none"
+                        placeholder="e.g., page name or form name"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-bold text-gray-300 mb-2">Category</label>
                     <input
@@ -590,7 +625,7 @@ export default function AdminPortal() {
 
             {/* Filter Tabs */}
             <div className="flex gap-3 mb-8 flex-wrap">
-              {(['all', 'open', 'in-progress', 'resolved'] as const).map((status) => (
+              {(['all', 'unassigned', 'assigned', 'resolved'] as const).map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
@@ -600,7 +635,7 @@ export default function AdminPortal() {
                       : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/30'
                   }`}
                 >
-                  {status === 'in-progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
               ))}
             </div>
@@ -824,6 +859,34 @@ export default function AdminPortal() {
                         </option>
                       ))}
                     </select>
+                    {selectedTicket.assignedTo && (
+                      <button
+                        onClick={async () => {
+                          if (!selectedTicket?.id) return;
+                          try {
+                            console.log('🔄 Unassigning ticket from:', selectedTicket.assignedToName);
+                            await updateTicket(selectedTicket.id, {
+                              assignedTo: undefined,
+                              assignedToName: undefined,
+                              status: 'unassigned' as const,
+                            });
+                            setSelectedTicket({
+                              ...selectedTicket,
+                              assignedTo: undefined,
+                              assignedToName: undefined,
+                              status: 'unassigned',
+                            });
+                            console.log('✅ Ticket unassigned');
+                          } catch (error) {
+                            console.error('❌ Failed to unassign ticket:', error);
+                            alert('Failed to unassign ticket. Please try again.');
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600/80 transition-colors font-bold text-sm"
+                      >
+                        Unassign
+                      </button>
+                    )}
                   </div>
                   {selectedTicket.assignedTo && (
                     <p className="text-xs text-gray-400 mt-2">Assigned to: <span className="text-reset-green font-bold">{selectedTicket.assignedToName}</span></p>

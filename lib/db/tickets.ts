@@ -28,18 +28,21 @@ export interface SupportTicket {
   userId: string;
   userName: string;
   userEmail: string;
-  userType: 'client' | 'subcontractor';
+  userType: 'client' | 'subcontractor' | 'business-owner';
   category: string;
   subject: string;
   message: string;
   createdAt: Timestamp;
-  status: 'assigned' | 'open' | 'in-progress' | 'response-given' | 'resolved';
+  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   response?: string;
   resolvedAt?: Timestamp;
   attachments?: Attachment[];
   assignedTo?: string;
   assignedToName?: string;
+  // Source tracking
+  source: 'quote' | 'contact-support' | 'business-owner-portal' | 'subcontractor-portal' | 'admin-created';
+  sourceLocation?: string; // Page or portal name where ticket came from
 }
 
 const ticketsCollection = collection(db, 'tickets');
