@@ -11,6 +11,7 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore';
+import { encryptPassword, decryptPassword, verifyPassword } from '@/lib/crypto';
 
 export interface UserProfile {
   id: string;
@@ -33,7 +34,7 @@ export interface UserProfile {
   isVerified: boolean;
   tempPassword?: string;
   password?: string;
-  passwordChangedAt?: string;
+  passwordChangedAt?: Timestamp;
   requiresPasswordChange?: boolean;
 }
 
@@ -56,17 +57,25 @@ export const getUsersByRole = async (role: 'client' | 'subcontractor'): Promise<
   return querySnapshot.docs.map(doc => doc.data() as UserProfile);
 };
 
-export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'createdAt'>): Promise<UserProfile> => {
+export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'createdAt' | 'passwordChangedAt'>): Promise<UserProfile> => {
   // Filter out undefined values - Firestore doesn't accept undefined
   const cleanData = Object.fromEntries(
     Object.entries(data).filter(([_, value]) => value !== undefined && value !== null && value !== '')
   );
 
-  const newUser: UserProfile = {
+  // Encrypt passwords if provided
+  const encryptedData = {
     ...cleanData,
+    tempPassword: data.tempPassword ? encryptPassword(data.tempPassword) : undefined,
+    password: data.password ? encryptPassword(data.password) : undefined,
+  };
+
+  const newUser: UserProfile = {
+    ...encryptedData,
     id: uid,
     createdAt: Timestamp.now(),
     requiresPasswordChange: true,
+    passwordChangedAt: undefined,
   } as UserProfile;
 
   await setDoc(doc(usersCollection, uid), newUser);
@@ -74,8 +83,18 @@ export const createUser = async (uid: string, data: Omit<UserProfile, 'id' | 'cr
 };
 
 export const updateUser = async (uid: string, data: Partial<UserProfile>): Promise<void> => {
+  // Encrypt password if being updated
+  const updateData = { ...data };
+  if (data.password) {
+    updateData.password = encryptPassword(data.password);
+    updateData.passwordChangedAt = Timestamp.now();
+  }
+  if (data.tempPassword) {
+    updateData.tempPassword = encryptPassword(data.tempPassword);
+  }
+
   const docRef = doc(usersCollection, uid);
-  await updateDoc(docRef, data);
+  await updateDoc(docRef, updateData);
 };
 
 export const deleteUser = async (uid: string): Promise<void> => {

@@ -5,9 +5,10 @@ import { LogIn, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '@/lib/auth';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import PasswordChange from '@/components/PasswordChange';
+import { verifyPassword, encryptPassword } from '@/lib/crypto';
 
 export default function SupportLogin() {
   const router = useRouter();
@@ -38,14 +39,18 @@ export default function SupportLogin() {
         memberEmail: memberData.email
       });
 
+      // Encrypt the new password
+      const encryptedPassword = encryptPassword(newPassword);
+
       // Update password in Firestore and mark password change as complete
       const memberRef = doc(db, 'supportTeam', memberData.id);
       const updateData = {
-        password: newPassword,
-        requiresPasswordChange: false
+        password: encryptedPassword,
+        requiresPasswordChange: false,
+        passwordChangedAt: Timestamp.now(),
       };
 
-      console.log('📝 Updating Firestore with:', updateData);
+      console.log('📝 Updating Firestore with encrypted password');
       await updateDoc(memberRef, updateData);
 
       console.log('✅ Password updated successfully in Firestore');
@@ -88,17 +93,16 @@ export default function SupportLogin() {
     }
 
     try {
-      // Query Firestore for support member with matching email and password
+      // Query Firestore for support member with matching email
       const supportTeamRef = collection(db, 'supportTeam');
       const q = query(
         supportTeamRef,
-        where('email', '==', email.toLowerCase()),
-        where('password', '==', password)
+        where('email', '==', email.toLowerCase())
       );
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
-        setError('Invalid username or password');
+        setError('Invalid email or password');
         setIsLoading(false);
         return;
       }
@@ -106,11 +110,21 @@ export default function SupportLogin() {
       const member = snapshot.docs[0].data();
       const memberId = snapshot.docs[0].id;
 
+      // Check if password matches (either temp password or regular password)
+      const tempPasswordMatch = member.tempPassword && verifyPassword(password, member.tempPassword);
+      const passwordMatch = member.password && verifyPassword(password, member.password);
+
+      if (!tempPasswordMatch && !passwordMatch) {
+        setError('Invalid email or password');
+        setIsLoading(false);
+        return;
+      }
+
       console.log('🔐 Support member found:', {
         name: member.name,
         email: member.email,
         requiresPasswordChange: member.requiresPasswordChange,
-        hasPassword: !!member.password,
+        usedTempPassword: tempPasswordMatch,
         memberId
       });
 

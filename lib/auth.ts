@@ -97,6 +97,7 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
   try {
     // Import here to avoid circular dependencies
     const { getAllUsers } = await import('./db/users');
+    const { verifyPassword } = await import('./crypto');
 
     const users = await getAllUsers();
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -105,9 +106,11 @@ export const loginUser = async (email: string, password: string): Promise<{ succ
       return { success: false, error: 'Email not found. Please check your email address.' };
     }
 
-    // Check if password matches either the temporary password or the actual password
-    const passwordMatch = user.tempPassword === password || user.password === password;
-    if (!passwordMatch) {
+    // Check if password matches either the temporary password or the actual password (both encrypted)
+    const tempPasswordMatch = user.tempPassword && verifyPassword(password, user.tempPassword);
+    const passwordMatch = user.password && verifyPassword(password, user.password);
+
+    if (!tempPasswordMatch && !passwordMatch) {
       return { success: false, error: 'Invalid password. Please check your credentials.' };
     }
 

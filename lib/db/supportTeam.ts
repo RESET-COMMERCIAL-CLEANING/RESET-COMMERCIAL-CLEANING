@@ -11,12 +11,14 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore';
+import { encryptPassword, decryptPassword, verifyPassword } from '@/lib/crypto';
 
 export interface SupportTeamMember {
   id: string;
   name: string;
   username: string;
   email: string;
+  tempPassword?: string;
   password?: string;
   role: 'support' | 'senior-support' | 'support-lead';
   status: 'active' | 'inactive' | 'pending';
@@ -25,6 +27,7 @@ export interface SupportTeamMember {
   avatar?: string;
   bio?: string;
   requiresPasswordChange?: boolean;
+  passwordChangedAt?: Timestamp;
 }
 
 const supportTeamCollection = collection(db, 'supportTeam');
@@ -46,34 +49,63 @@ export const getSupportTeamByRole = async (role: string): Promise<SupportTeamMem
   return querySnapshot.docs.map(doc => doc.data() as SupportTeamMember);
 };
 
-export const createSupportMember = async (uid: string, data: Omit<SupportTeamMember, 'id' | 'joinedDate'>): Promise<SupportTeamMember> => {
+export const createSupportMember = async (uid: string, data: Omit<SupportTeamMember, 'id' | 'joinedDate' | 'passwordChangedAt'>): Promise<SupportTeamMember> => {
+  // Filter out undefined values
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([_, value]) => value !== undefined && value !== null && value !== '')
+  );
+
+  // Encrypt passwords if provided
+  const encryptedData = {
+    ...cleanData,
+    tempPassword: data.tempPassword ? encryptPassword(data.tempPassword) : undefined,
+    password: data.password ? encryptPassword(data.password) : undefined,
+  };
+
   const newMember: SupportTeamMember = {
-    ...data,
+    ...encryptedData,
     id: uid,
     joinedDate: Timestamp.now(),
     requiresPasswordChange: true,
-  };
+    passwordChangedAt: undefined,
+  } as SupportTeamMember;
+
   await setDoc(doc(supportTeamCollection, uid), newMember);
   return newMember;
 };
 
 export const updateSupportMember = async (uid: string, data: Partial<SupportTeamMember>): Promise<void> => {
+  // Encrypt password if being updated
+  const updateData = { ...data };
+  if (data.password) {
+    updateData.password = encryptPassword(data.password);
+    updateData.passwordChangedAt = Timestamp.now();
+  }
+  if (data.tempPassword) {
+    updateData.tempPassword = encryptPassword(data.tempPassword);
+  }
+
   const docRef = doc(supportTeamCollection, uid);
-  await updateDoc(docRef, data);
+  await updateDoc(docRef, updateData);
 };
 
 export const deleteSupportMember = async (uid: string): Promise<void> => {
   await deleteDoc(doc(supportTeamCollection, uid));
 };
 
-export const authSupportMember = async (username: string, password: string): Promise<SupportTeamMember | null> => {
-  const q = query(supportTeamCollection, where('username', '==', username));
+export const authSupportMember = async (email: string, password: string): Promise<SupportTeamMember | null> => {
+  const q = query(supportTeamCollection, where('email', '==', email.toLowerCase()));
   const querySnapshot = await getDocs(q);
 
   if (querySnapshot.empty) return null;
 
   const member = querySnapshot.docs[0].data() as SupportTeamMember;
-  if (member.password === password && member.status === 'active') {
+
+  // Check if password matches either tempPassword or password
+  const tempPasswordMatch = member.tempPassword && verifyPassword(password, member.tempPassword);
+  const passwordMatch = member.password && verifyPassword(password, member.password);
+
+  if ((tempPasswordMatch || passwordMatch) && member.status === 'active') {
     return member;
   }
 

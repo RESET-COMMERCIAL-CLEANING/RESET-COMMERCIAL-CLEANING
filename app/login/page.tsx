@@ -8,8 +8,9 @@ import { useRouter } from 'next/navigation';
 import { Toast, useToast } from '@/components/Toast';
 import { loginUser } from '@/lib/auth';
 import PasswordChange from '@/components/PasswordChange';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { encryptPassword } from '@/lib/crypto';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -103,14 +104,18 @@ export default function LoginPage() {
         userRole: userData.role
       });
 
+      // Encrypt the new password
+      const encryptedPassword = encryptPassword(newPassword);
+
       // Update password in Firestore
       const userRef = doc(db, 'users', userData.id);
       const updateData = {
-        password: newPassword,
-        requiresPasswordChange: false
+        password: encryptedPassword,
+        requiresPasswordChange: false,
+        passwordChangedAt: Timestamp.now(),
       };
 
-      console.log('📝 Updating Firestore with:', updateData);
+      console.log('📝 Updating Firestore with encrypted password');
       await updateDoc(userRef, updateData);
 
       console.log('✅ Password updated successfully');
