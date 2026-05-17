@@ -62,10 +62,15 @@ export default function UserManagement() {
     // Set up real-time listener for users
     const usersCollection = collection(db, 'users');
     const unsubscribe = onSnapshot(usersCollection, (snapshot) => {
-      const userList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as UserProfile[];
+      const userList = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.()?.toLocaleString() || data.createdAt || '',
+          passwordChangedAt: data.passwordChangedAt?.toDate?.()?.toLocaleString() || data.passwordChangedAt,
+        } as UserProfile;
+      });
       setUsers(userList);
     });
 
