@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
 import { Toast, useToast } from '@/components/Toast';
-import { subscribeToTickets, updateTicket, createTicket, unassignTicket, archiveTicket, deleteTicketById, type Attachment } from '@/lib/db/tickets';
+import { subscribeToTickets, updateTicket, createTicket, unassignTicket, archiveTicket, deleteTicketById, addTicketComment, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { subscribeToAllSupportTeam } from '@/lib/db/supportTeam';
 import { formatTicketResponseEmail, formatTicketAssignmentEmail, sendEmail } from '@/lib/email';
@@ -27,7 +27,7 @@ interface SupportTicket {
   subject: string;
   message: string;
   createdAt: string;
-  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved' | 'archived';
+  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved' | 'archived' | 'deleted';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   response?: string;
   resolvedAt?: string;
@@ -52,6 +52,8 @@ export default function AdminPortal() {
   const [supportTeamMembers, setSupportTeamMembers] = useState<any[]>([]);
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
   const [showCreateTicket, setShowCreateTicket] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [confirmAction, setConfirmAction] = useState<'archive' | 'delete' | null>(null);
   const [newTicketForm, setNewTicketForm] = useState({
     userName: '',
     userEmail: '',
@@ -307,6 +309,31 @@ export default function AdminPortal() {
     setUploadedFiles(uploadedFiles.filter(f => f.id !== fileId));
   };
 
+  const handleSubmitComment = async () => {
+    if (!selectedTicket || !commentText.trim() || !user?.id) return;
+
+    try {
+      console.log('💬 Adding comment to ticket:', selectedTicket.id);
+
+      await addTicketComment(
+        selectedTicket.id,
+        user.id,
+        user.name || 'Superuser',
+        'superuser',
+        commentText.trim()
+      );
+
+      console.log('✅ Comment added successfully');
+      setCommentText('');
+      addToast('Comment added', 'success', 3000);
+
+      // The comment will appear automatically via the real-time subscription
+    } catch (error) {
+      console.error('❌ Failed to add comment:', error);
+      addToast('Failed to add comment. Please try again.', 'error', 5000);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'unassigned': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
@@ -318,6 +345,7 @@ export default function AdminPortal() {
       case 'response-given': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case 'resolved': return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'archived': return 'bg-slate-600/20 text-slate-300 border-slate-600/30';
+      case 'deleted': return 'bg-red-900/20 text-red-300 border-red-900/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
@@ -943,25 +971,13 @@ export default function AdminPortal() {
                     <option value="more-info-needed">More Info Needed</option>
                     <option value="resolved">Resolved</option>
                     <option value="archived">Archive</option>
+                    <option value="deleted">Delete (Soft Delete)</option>
                   </select>
 
                   {/* Archive Button */}
                   {selectedTicket.status !== 'archived' && (
                     <button
-                      onClick={async () => {
-                        if (confirm('Archive this ticket?')) {
-                          try {
-                            await archiveTicket(selectedTicket.id);
-                            setSelectedTicket({
-                              ...selectedTicket,
-                              status: 'archived',
-                            });
-                            addToast('Ticket archived', 'success', 3000);
-                          } catch (error) {
-                            addToast('Failed to archive ticket', 'error', 5000);
-                          }
-                        }
-                      }}
+                      onClick={() => setConfirmAction('archive')}
                       className="py-2 px-3 bg-gray-600 text-white rounded hover:bg-gray-600/80 transition-colors font-bold text-sm"
                     >
                       Archive
@@ -970,17 +986,7 @@ export default function AdminPortal() {
 
                   {/* Delete Button */}
                   <button
-                    onClick={async () => {
-                      if (confirm('Delete this ticket permanently? This cannot be undone!')) {
-                        try {
-                          await deleteTicketById(selectedTicket.id);
-                          setSelectedTicket(null);
-                          addToast('Ticket deleted', 'success', 3000);
-                        } catch (error) {
-                          addToast('Failed to delete ticket', 'error', 5000);
-                        }
-                      }
-                    }}
+                    onClick={() => setConfirmAction('delete')}
                     className="py-2 px-3 bg-red-600 text-white rounded hover:bg-red-600/80 transition-colors font-bold text-sm"
                   >
                     Delete
@@ -1062,6 +1068,75 @@ export default function AdminPortal() {
                     </div>
                   </motion.div>
                 )}
+
+                {/* Comments Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-6 pt-6 border-t border-reset-green/20 space-y-4"
+                >
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <MessageSquare size={18} />
+                    Internal Comments
+                  </h3>
+
+                  {/* Existing Comments */}
+                  {selectedTicket.comments && selectedTicket.comments.length > 0 && (
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {selectedTicket.comments.map((comment: any) => (
+                        <div key={comment.id} className="p-3 rounded-lg bg-white/5 border border-reset-green/20 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm text-reset-green">{comment.authorName}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                comment.authorRole === 'superuser'
+                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                  : 'bg-blue-500/20 text-blue-400'
+                              }`}>
+                                {comment.authorRole === 'superuser' ? '🔑 Admin' : '👤 Support'}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {comment.createdAt?.toDate?.()?.toLocaleString() || comment.createdAt || 'Just now'}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-300">{comment.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!selectedTicket.comments || selectedTicket.comments.length === 0 && (
+                    <p className="text-xs text-gray-500 italic">No comments yet</p>
+                  )}
+
+                  {/* Add Comment Form */}
+                  <div className="space-y-3">
+                    <textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Add an internal comment to respond to the support member..."
+                      rows={3}
+                      className="w-full px-4 py-3 rounded bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none text-sm resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCommentText('')}
+                        className="flex-1 py-2 border border-reset-green text-reset-green rounded hover:bg-reset-green/10 transition-colors font-bold text-sm"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={handleSubmitComment}
+                        disabled={!commentText.trim()}
+                        className="flex-1 py-2 bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <Send size={16} />
+                        Post Comment
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
               </motion.div>
             ) : (
               <div className="p-6 rounded-xl glass border border-reset-green/20 h-full flex items-center justify-center">
@@ -1070,6 +1145,76 @@ export default function AdminPortal() {
             )}
           </div>
             </div>
+
+            {/* Confirmation Modal */}
+            <AnimatePresence>
+              {confirmAction && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+                  onClick={() => setConfirmAction(null)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-slate-900 border border-reset-green/30 rounded-xl p-6 max-w-sm mx-4 space-y-4"
+                  >
+                    <h3 className="font-bold text-lg text-white">
+                      {confirmAction === 'archive' ? 'Archive Ticket?' : 'Delete Ticket?'}
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      {confirmAction === 'archive'
+                        ? 'Are you sure you want to archive this ticket? You can still access it later.'
+                        : 'Are you sure you want to delete this ticket? This action cannot be undone.'}
+                    </p>
+                    <div className="flex gap-2 pt-4">
+                      <button
+                        onClick={() => setConfirmAction(null)}
+                        className="flex-1 py-2 border border-reset-green text-reset-green rounded hover:bg-reset-green/10 transition-colors font-bold text-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            if (confirmAction === 'archive') {
+                              await archiveTicket(selectedTicket!.id);
+                              setSelectedTicket({
+                                ...selectedTicket!,
+                                status: 'archived',
+                              });
+                              addToast('Ticket archived', 'success', 3000);
+                            } else if (confirmAction === 'delete') {
+                              await deleteTicketById(selectedTicket!.id);
+                              setSelectedTicket(null);
+                              addToast('Ticket deleted', 'success', 3000);
+                            }
+                            setConfirmAction(null);
+                          } catch (error) {
+                            addToast(
+                              confirmAction === 'archive' ? 'Failed to archive ticket' : 'Failed to delete ticket',
+                              'error',
+                              5000
+                            );
+                          }
+                        }}
+                        className={`flex-1 py-2 rounded font-bold text-sm text-white transition-colors ${
+                          confirmAction === 'archive'
+                            ? 'bg-gray-600 hover:bg-gray-600/80'
+                            : 'bg-red-600 hover:bg-red-600/80'
+                        }`}
+                      >
+                        {confirmAction === 'archive' ? 'Archive' : 'Delete'}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </>
         )}
 

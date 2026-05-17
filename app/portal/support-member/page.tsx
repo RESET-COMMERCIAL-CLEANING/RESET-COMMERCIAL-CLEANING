@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { logSupportActivity } from '@/lib/supportTeamManagement';
-import { subscribeToTicketsByAssignee, updateTicket, type Attachment } from '@/lib/db/tickets';
+import { subscribeToTicketsByAssignee, updateTicket, addTicketComment, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { logActivity } from '@/lib/db/activity';
 import { formatTicketResponseEmail, sendEmail } from '@/lib/email';
@@ -134,8 +134,18 @@ export default function SupportMemberPortal() {
       // Update ticket status to 'more-info-needed'
       await updateTicket(selectedTicket.id, {
         status: 'more-info-needed' as const,
-        response: moreInfoText,
       });
+
+      // Add internal comment for superuser
+      if (member?.id) {
+        await addTicketComment(
+          selectedTicket.id,
+          member.id,
+          member.name,
+          'support-member',
+          moreInfoText
+        );
+      }
 
       // Log activity for requesting more info
       if (member?.id) {
@@ -147,7 +157,7 @@ export default function SupportMemberPortal() {
         );
       }
 
-      setSuccessMessage('Marked ticket as needing more information.');
+      setSuccessMessage('Marked ticket as needing more information. Superuser will respond in comments.');
       setShowSuccessModal(true);
       setMoreInfoText('');
       setShowMoreInfoModal(false);

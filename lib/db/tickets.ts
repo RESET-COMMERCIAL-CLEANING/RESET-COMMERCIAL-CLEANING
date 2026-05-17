@@ -23,6 +23,15 @@ export interface Attachment {
   uploadedAt: Timestamp;
 }
 
+export interface TicketComment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'superuser' | 'support-member';
+  message: string;
+  createdAt: Timestamp;
+}
+
 export interface SupportTicket {
   id: string;
   ticketNumber: string;
@@ -34,7 +43,7 @@ export interface SupportTicket {
   subject: string;
   message: string;
   createdAt: Timestamp;
-  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved' | 'archived';
+  status: 'unassigned' | 'assigned' | 'open' | 'in-progress' | 'response-given' | 'test-phase' | 'more-info-needed' | 'resolved' | 'archived' | 'deleted';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   response?: string;
   resolvedAt?: Timestamp;
@@ -43,7 +52,9 @@ export interface SupportTicket {
   assignedToName?: string;
   // Source tracking
   source: 'quote' | 'contact-support' | 'business-owner-portal' | 'subcontractor-portal' | 'admin-created';
-  sourceLocation?: string; // Page or portal name where ticket came from
+  sourceLocation?: string;
+  // Internal comments between superuser and support member
+  comments?: TicketComment[];
 }
 
 const ticketsCollection = collection(db, 'tickets');
@@ -55,7 +66,8 @@ export const getTicket = async (ticketId: string): Promise<SupportTicket | null>
 };
 
 export const getAllTickets = async (): Promise<SupportTicket[]> => {
-  const querySnapshot = await getDocs(ticketsCollection);
+  const q = query(ticketsCollection, where('status', '!=', 'deleted'));
+  const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({
     ...doc.data() as SupportTicket,
     id: doc.id,
@@ -92,7 +104,8 @@ export const deleteTicket = async (ticketId: string): Promise<void> => {
 };
 
 export const subscribeToTickets = (callback: (tickets: SupportTicket[]) => void) => {
-  return onSnapshot(ticketsCollection, (querySnapshot) => {
+  const q = query(ticketsCollection, where('status', '!=', 'deleted'));
+  return onSnapshot(q, (querySnapshot) => {
     const tickets = querySnapshot.docs.map(doc => ({
       ...doc.data() as SupportTicket,
       id: doc.id,
@@ -179,5 +192,37 @@ export const deleteTicketById = async (ticketId: string): Promise<void> => {
   if (!ticketId) {
     throw new Error('Cannot delete ticket without ID');
   }
-  await deleteTicket(ticketId);
+  const docRef = doc(ticketsCollection, ticketId);
+  await updateDoc(docRef, {
+    status: 'deleted' as const,
+  });
+};
+
+export const addTicketComment = async (
+  ticketId: string,
+  authorId: string,
+  authorName: string,
+  authorRole: 'superuser' | 'support-member',
+  message: string
+): Promise<void> => {
+  const ticket = await getTicket(ticketId);
+  if (!ticket) {
+    throw new Error('Ticket not found');
+  }
+
+  const newComment: TicketComment = {
+    id: `comment-${Date.now()}`,
+    authorId,
+    authorName,
+    authorRole,
+    message,
+    createdAt: Timestamp.now(),
+  };
+
+  const currentComments = ticket.comments || [];
+  const docRef = doc(ticketsCollection, ticketId);
+
+  await updateDoc(docRef, {
+    comments: [...currentComments, newComment],
+  });
 };

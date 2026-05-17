@@ -1,8 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { X, Send } from 'lucide-react';
+import { X, Send, AlertCircle } from 'lucide-react';
 
 interface SupportModalProps {
   isOpen: boolean;
@@ -20,12 +20,14 @@ export function SupportModal({ isOpen, onClose, userName, userEmail }: SupportMo
     message: ''
   });
   const [supportSubmitted, setSupportSubmitted] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const handleSupportSubmit = () => {
     if (!supportForm.subject.trim() || !supportForm.message.trim()) {
-      alert('Please fill in all fields');
+      setValidationError('Please fill in all required fields');
       return;
     }
+    setValidationError('');
 
     setSupportSubmitted(true);
 
@@ -39,6 +41,7 @@ export function SupportModal({ isOpen, onClose, userName, userEmail }: SupportMo
         message: ''
       });
       setSupportSubmitted(false);
+      setValidationError('');
     }, 2000);
   };
 
@@ -61,7 +64,10 @@ export function SupportModal({ isOpen, onClose, userName, userEmail }: SupportMo
       >
         {/* Close Button */}
         <button
-          onClick={onClose}
+          onClick={() => {
+            setValidationError('');
+            onClose();
+          }}
           className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
         >
           <X size={24} />
@@ -89,6 +95,21 @@ export function SupportModal({ isOpen, onClose, userName, userEmail }: SupportMo
             </div>
 
             <div className="flex-1 p-4 sm:p-6 space-y-4">
+              {/* Validation Error */}
+              <AnimatePresence>
+                {validationError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="p-3 rounded bg-red-500/20 border border-red-500/30 flex items-center gap-2"
+                  >
+                    <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
+                    <p className="text-xs sm:text-sm text-red-400">{validationError}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div>
                 <label className="block text-xs sm:text-sm font-bold text-gray-400 mb-2">Name</label>
                 <input
@@ -154,7 +175,10 @@ export function SupportModal({ isOpen, onClose, userName, userEmail }: SupportMo
 
             <div className="p-4 sm:p-6 border-t border-blue-600/20 flex gap-2 sm:gap-3">
               <button
-                onClick={onClose}
+                onClick={() => {
+                  setValidationError('');
+                  onClose();
+                }}
                 className="flex-1 py-2 text-xs sm:text-sm border border-blue-600 text-blue-600 rounded hover:bg-blue-600/10 transition-colors font-bold"
               >
                 Cancel
