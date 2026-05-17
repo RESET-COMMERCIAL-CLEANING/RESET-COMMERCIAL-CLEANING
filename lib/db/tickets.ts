@@ -66,8 +66,7 @@ export const getTicket = async (ticketId: string): Promise<SupportTicket | null>
 };
 
 export const getAllTickets = async (): Promise<SupportTicket[]> => {
-  const q = query(ticketsCollection, where('status', '!=', 'deleted'));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await getDocs(ticketsCollection);
   return querySnapshot.docs.map(doc => ({
     ...doc.data() as SupportTicket,
     id: doc.id,
@@ -104,8 +103,7 @@ export const deleteTicket = async (ticketId: string): Promise<void> => {
 };
 
 export const subscribeToTickets = (callback: (tickets: SupportTicket[]) => void) => {
-  const q = query(ticketsCollection, where('status', '!=', 'deleted'));
-  return onSnapshot(q, (querySnapshot) => {
+  return onSnapshot(ticketsCollection, (querySnapshot) => {
     const tickets = querySnapshot.docs.map(doc => ({
       ...doc.data() as SupportTicket,
       id: doc.id,

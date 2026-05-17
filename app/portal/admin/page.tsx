@@ -54,7 +54,7 @@ export default function AdminPortal() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [showResponseForm, setShowResponseForm] = useState(false);
   const [responseText, setResponseText] = useState('');
-  const [filter, setFilter] = useState<'all' | 'unassigned' | 'assigned' | 'resolved'>('all');
+  const [filter, setFilter] = useState<'all' | 'unassigned' | 'assigned' | 'resolved' | 'archived' | 'deleted'>('all');
   const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team'>('tickets');
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
@@ -685,7 +685,7 @@ export default function AdminPortal() {
 
             {/* Filter Tabs */}
             <div className="flex gap-3 mb-8 flex-wrap">
-              {(['all', 'unassigned', 'assigned', 'resolved'] as const).map((status) => (
+              {(['all', 'unassigned', 'assigned', 'resolved', 'archived', 'deleted'] as const).map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
@@ -695,7 +695,7 @@ export default function AdminPortal() {
                       : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/30'
                   }`}
                 >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status === 'archived' ? '📦 Archived' : status === 'deleted' ? '🗑️ Deleted' : status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
               ))}
             </div>
