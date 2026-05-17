@@ -27,10 +27,17 @@ export function Navbar() {
   const isAdminPortal = pathname.includes('/portal/admin') || pathname.includes('/portal/superuser-login');
   const isSupportPortal = pathname.includes('/portal/support-member');
   const isSupportLogin = pathname.includes('/portal/support-login');
-  const isAuthenticated = isPortalPage && loggedInUser;
+  const isLoginPage = pathname.includes('/login') || pathname.includes('/superuser-login') || pathname.includes('/support-login');
+  const isAuthenticated = isPortalPage && loggedInUser && !isLoginPage;
 
   // Get logged-in user from localStorage
   useEffect(() => {
+    // Clear user on login pages
+    if (isLoginPage) {
+      setLoggedInUser(null);
+      return;
+    }
+
     const currentUser = localStorage.getItem('currentUser');
     const userProfile = localStorage.getItem('userProfile');
     const supportMember = localStorage.getItem('supportMember');
@@ -47,8 +54,10 @@ export function Navbar() {
       });
     } else if (supportMember) {
       setLoggedInUser(JSON.parse(supportMember));
+    } else {
+      setLoggedInUser(null);
     }
-  }, [pathname]);
+  }, [pathname, isLoginPage]);
 
   // Click-outside detection for profile panel
   useEffect(() => {
@@ -165,7 +174,7 @@ export function Navbar() {
         )}
 
         {/* CTA Buttons / Profile Panel */}
-        {!isAuthenticated ? (
+        {!isAuthenticated && !isLoginPage ? (
           <div className="hidden md:flex items-center gap-4">
             <Link
               href="/login"
@@ -378,7 +387,7 @@ export function Navbar() {
                 </Link>
               ))}
 
-              {!isAuthenticated ? (
+              {!isAuthenticated && !isLoginPage ? (
                 <>
                   <Link
                     href="/login"

@@ -11,7 +11,7 @@ import PasswordChange from '@/components/PasswordChange';
 
 export default function SupportLogin() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -60,18 +60,18 @@ export default function SupportLogin() {
     setError('');
     setIsLoading(true);
 
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password');
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password');
       setIsLoading(false);
       return;
     }
 
     try {
-      // Query Firestore for support member with matching username and password
+      // Query Firestore for support member with matching email and password
       const supportTeamRef = collection(db, 'supportTeam');
       const q = query(
         supportTeamRef,
-        where('username', '==', username),
+        where('email', '==', email.toLowerCase()),
         where('password', '==', password)
       );
       const snapshot = await getDocs(q);
@@ -154,16 +154,16 @@ export default function SupportLogin() {
               )}
 
               <form onSubmit={handleLogin} className="space-y-4">
-            {/* Username Input */}
+            {/* Email Input */}
             <div>
               <label className="block text-sm font-bold text-gray-300 mb-2">
-                Username
+                Email Address
               </label>
               <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
                 className="w-full px-4 py-3 rounded-lg bg-white/5 border border-reset-green/30 text-white placeholder-gray-500 focus:border-reset-green focus:outline-none transition-colors"
                 disabled={isLoading}
               />
@@ -209,28 +209,28 @@ export default function SupportLogin() {
                 <p className="text-xs text-gray-400 mb-3 font-bold">DEMO CREDENTIALS (5 TEAM MEMBERS):</p>
                 <div className="space-y-3 text-xs text-gray-400">
                   <div>
-                    <p className="text-gray-300 font-bold mb-1">👤 John Support (Support)</p>
-                    <p>Username: <span className="text-reset-green">john.support</span></p>
+                    <p className="text-gray-300 font-bold mb-1">👤 John Support</p>
+                    <p>Email: <span className="text-reset-green">john.support@reset.com</span></p>
                     <p>Password: <span className="text-reset-green">Support@123!</span></p>
                   </div>
                   <div>
-                    <p className="text-gray-300 font-bold mb-1">👤 Maria Support (Support)</p>
-                    <p>Username: <span className="text-reset-green">maria.support</span></p>
+                    <p className="text-gray-300 font-bold mb-1">👤 Maria Support</p>
+                    <p>Email: <span className="text-reset-green">maria.support@reset.com</span></p>
                     <p>Password: <span className="text-reset-green">Support@456!</span></p>
                   </div>
                   <div>
                     <p className="text-gray-300 font-bold mb-1">👤 Alex Chen (Senior Support)</p>
-                    <p>Username: <span className="text-reset-green">alex.chen</span></p>
+                    <p>Email: <span className="text-reset-green">alex.chen@reset.com</span></p>
                     <p>Password: <span className="text-reset-green">Support@789!</span></p>
                   </div>
                   <div>
-                    <p className="text-gray-300 font-bold mb-1">👤 Sarah Williams (Support)</p>
-                    <p>Username: <span className="text-reset-green">sarah.williams</span></p>
+                    <p className="text-gray-300 font-bold mb-1">👤 Sarah Williams</p>
+                    <p>Email: <span className="text-reset-green">sarah.williams@reset.com</span></p>
                     <p>Password: <span className="text-reset-green">Support@234!</span></p>
                   </div>
                   <div>
                     <p className="text-gray-300 font-bold mb-1">👤 David Lee (Support Lead)</p>
-                    <p>Username: <span className="text-reset-green">david.lee</span></p>
+                    <p>Email: <span className="text-reset-green">david.lee@reset.com</span></p>
                     <p>Password: <span className="text-reset-green">Support@567!</span></p>
                   </div>
                 </div>
