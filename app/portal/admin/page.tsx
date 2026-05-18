@@ -16,6 +16,7 @@ import { logTicketResponse, logTicketAssignment, logEmailSent, logTicketResoluti
 import UserManagement from '@/components/UserManagement';
 import SupportTeamManagement from '@/components/SupportTeamManagement';
 import ContractManagement from '@/components/ContractManagement';
+import Onboarding from '@/components/Onboarding';
 
 interface TicketComment {
   id: string;
@@ -64,7 +65,7 @@ export default function AdminPortal() {
   const [responseText, setResponseText] = useState('');
   const [filter, setFilter] = useState<'all' | 'unassigned' | 'assigned' | 'resolved' | 'archived' | 'deleted'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team' | 'contracts'>('tickets');
+  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team' | 'contracts' | 'onboarding'>('tickets');
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [assignToName, setAssignToName] = useState('');
@@ -84,82 +85,6 @@ export default function AdminPortal() {
     source: 'admin-created' as 'quote' | 'contact-support' | 'business-owner-portal' | 'subcontractor-portal' | 'admin-created',
     sourceLocation: '',
   });
-
-  // Initialize tickets from localStorage or use mock data
-  const initializeTickets = (): SupportTicket[] => {
-    if (typeof window === 'undefined') return [];
-    const savedTickets = localStorage.getItem('supportTickets');
-    if (savedTickets) {
-      return JSON.parse(savedTickets);
-    }
-    return [
-    {
-      id: '1',
-      ticketNumber: 'TKT-001',
-      userId: 'client-1',
-      userName: 'Sarah Johnson',
-      userEmail: 'admin@techstartuphq.com',
-      userType: 'client',
-      category: 'billing',
-      subject: 'Extra charge on invoice',
-      message: 'I noticed an extra charge on my monthly invoice that I do not recognize. Please review my March invoice.',
-      createdAt: 'Mar 13, 2025, 2:30 PM',
-      status: 'assigned',
-      priority: 'medium',
-      source: 'contact-support',
-    },
-    {
-      id: '2',
-      ticketNumber: 'TKT-002',
-      userId: 'sub-1',
-      userName: 'John Smith',
-      userEmail: 'john@elitecrew.com',
-      userType: 'subcontractor',
-      category: 'job',
-      subject: 'Job assignment issue',
-      message: 'I did not receive the job assignment for the deep cleaning on March 15th. Please check the system.',
-      createdAt: 'Mar 12, 2025, 10:15 AM',
-      status: 'in-progress',
-      priority: 'high',
-      response: 'We are investigating this issue. Please check your email for job details.',
-      source: 'subcontractor-portal',
-    },
-    {
-      id: '3',
-      ticketNumber: 'TKT-003',
-      userId: 'client-2',
-      userName: 'Michael Chen',
-      userEmail: 'facilities@medicalcenter.com',
-      userType: 'client',
-      category: 'quality',
-      subject: 'Quality concern about cleaning',
-      message: 'The cleaning on March 10th did not meet our standards. Some areas were not properly cleaned.',
-      createdAt: 'Mar 11, 2025, 9:00 AM',
-      status: 'resolved',
-      priority: 'high',
-      response: 'We have reviewed the issue and assigned a new team for your next cleaning. Apologies for the inconvenience.',
-      resolvedAt: 'Mar 12, 2025, 11:30 AM',
-      source: 'business-owner-portal',
-    },
-    {
-      id: '4',
-      ticketNumber: 'TKT-004',
-      userId: 'sub-2',
-      userName: 'Maria Rodriguez',
-      userEmail: 'maria@proservices.com',
-      userType: 'subcontractor',
-      category: 'technical',
-      subject: 'Cannot access portal',
-      message: 'I cannot log into the portal. Getting an error message saying "Invalid credentials".',
-      createdAt: 'Mar 10, 2025, 3:45 PM',
-      status: 'resolved',
-      priority: 'urgent',
-      response: 'Password has been reset. You should receive a new temporary password via email.',
-      resolvedAt: 'Mar 10, 2025, 5:00 PM',
-      source: 'admin-created',
-    },
-    ];
-  };
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
@@ -544,6 +469,17 @@ export default function AdminPortal() {
           >
             <Calendar size={18} />
             Contracts & Schedules
+          </button>
+          <button
+            onClick={() => setActiveTab('onboarding')}
+            className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'onboarding'
+                ? 'bg-reset-green text-black'
+                : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/30'
+            }`}
+          >
+            <Plus size={18} />
+            Onboarding
           </button>
         </div>
 
@@ -1412,6 +1348,10 @@ export default function AdminPortal() {
         {/* Contracts & Schedules Section */}
         {activeTab === 'contracts' && (
           <ContractManagement />
+        )}
+
+        {activeTab === 'onboarding' && (
+          <Onboarding />
         )}
       </div>
       </div>

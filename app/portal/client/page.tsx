@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateMonthlyReportPDF } from '@/lib/pdfGenerator';
 import { logout, getUserProfile } from '@/lib/auth';
+import { subscribeToContractsByClient, Contract } from '@/lib/db/contracts';
+import { SupportModal } from '@/components/SupportModal';
 
 interface Notification {
   id: string;
@@ -57,6 +59,9 @@ export default function ClientPortal() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Get user profile from localStorage or use default
   const userProfile = getUserProfile();
@@ -71,9 +76,10 @@ export default function ClientPortal() {
     squareFeet: userProfile?.squareFeet || '5,000 sqft',
   });
 
-  // Check authentication
+  // Check authentication and set current user
   useEffect(() => {
     const userJson = localStorage.getItem('currentUser');
+    const userProfile = localStorage.getItem('userProfile');
     if (!userJson) {
       router.push('/login');
       return;
@@ -81,13 +87,26 @@ export default function ClientPortal() {
 
     try {
       const user = JSON.parse(userJson);
+      const profile = JSON.parse(userProfile || '{}');
       if (user.isSuperuser || user.role !== 'client') {
         router.push('/login');
       }
+      setCurrentUser({
+        id: profile.id || user.id,
+        name: `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || user.name || 'User',
+        email: profile.email || user.email || '',
+      });
     } catch {
       router.push('/login');
     }
   }, [router]);
+
+  // Subscribe to contracts
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const unsub = subscribeToContractsByClient(currentUser.id, setContracts);
+    return () => unsub();
+  }, [currentUser?.id]);
 
   const [editProfile, setEditProfile] = useState<Profile>(profile);
   const [selectedPhotoDate, setSelectedPhotoDate] = useState<string | null>(null);
@@ -533,6 +552,76 @@ export default function ClientPortal() {
               </div>
             </motion.div>
 
+            {/* Contracts */}
+            <motion.div
+              id="contracts-section"
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="p-6 rounded-xl glass"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base lg:text-lg font-bold text-white">My Contracts</h3>
+                <button
+                  onClick={() => setShowSupportModal(true)}
+                  className="px-3 py-1 text-xs bg-reset-green/20 text-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold flex items-center gap-1"
+                >
+                  <MessageSquare size={12} />
+                  Support
+                </button>
+              </div>
+              {contracts.length === 0 ? (
+                <p className="text-gray-400 text-sm">No contracts found. Contact RESET to get started.</p>
+              ) : (
+                <div className="space-y-3">
+                  {contracts.map((contract) => (
+                    <motion.div
+                      key={contract.id}
+                      whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.1)' }}
+                      className="p-4 rounded border border-reset-green/20 hover:border-reset-green/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h4 className="font-bold text-white text-sm">{contract.type}</h4>
+                        <span className={`px-2 py-1 text-xs rounded border font-bold ${
+                          contract.status === 'active'
+                            ? 'bg-reset-green/20 text-reset-green border-reset-green/30'
+                            : 'bg-gray-700/30 text-gray-300 border-gray-600/30'
+                        }`}>
+                          {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-xs text-gray-400 mb-3">
+                        <div className="flex justify-between">
+                          <span>Frequency:</span>
+                          <span className="text-gray-200">{contract.frequency}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Rate:</span>
+                          <span className="text-gray-200">{contract.hourlyRate}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Period:</span>
+                          <span className="text-gray-200">{contract.startDate} to {contract.endDate}</span>
+                        </div>
+                      </div>
+                      {contract.signedPdfUrl && (
+                        <a
+                          href={contract.signedPdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full py-2 text-xs bg-reset-green/20 text-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold flex items-center justify-center gap-2"
+                        >
+                          <Download size={12} />
+                          Download Contract
+                        </a>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
           </div>
         </div>
       </div>
@@ -586,6 +675,19 @@ export default function ClientPortal() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Support Modal */}
+      {currentUser && (
+        <SupportModal
+          isOpen={showSupportModal}
+          onClose={() => setShowSupportModal(false)}
+          userName={currentUser.name}
+          userEmail={currentUser.email}
+          userId={currentUser.id}
+          userType="client"
+          source="business-owner-portal"
+        />
+      )}
     </div>
   );
 }

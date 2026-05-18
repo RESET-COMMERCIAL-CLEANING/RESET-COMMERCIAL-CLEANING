@@ -9,6 +9,8 @@ import { logout, getUserProfile } from '@/lib/auth';
 import { uploadBeforeAfterPhoto } from '@/lib/storage';
 import { SupportModal } from '@/components/SupportModal';
 import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
+import { subscribeToContractsBySubcontractor, Contract } from '@/lib/db/contracts';
+import { subscribeToJobs, CleaningJob, updateJob } from '@/lib/db/jobs';
 
 interface Notification {
   id: string;
@@ -55,7 +57,7 @@ interface TaskUploadState {
 
 export default function SubcontractorPortal() {
   const router = useRouter();
-  const [selectedContract, setSelectedContract] = useState<number | null>(null);
+  const [selectedContract, setSelectedContract] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -117,9 +119,9 @@ export default function SubcontractorPortal() {
     duration: '4 hours',
     rate: '$65',
   });
-  const [acceptedJobs, setAcceptedJobs] = useState<number[]>([]);
+  const [acceptedJobs, setAcceptedJobs] = useState<string[]>([]);
   const [rescheduledOffers, setRescheduledOffers] = useState<number>(3);
-  const [interestedJobs, setInterestedJobs] = useState<number[]>([]);
+  const [interestedJobs, setInterestedJobs] = useState<string[]>([]);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([
     {
       id: 'cl1',
@@ -162,13 +164,69 @@ export default function SubcontractorPortal() {
     },
   ]);
 
-  // Check if subcontractor has extended contracts
-  const hasExtendedContracts = true;
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [allFirestoreJobs, setAllFirestoreJobs] = useState<CleaningJob[]>([]);
+
+  // Subscribe to contracts
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const unsub = subscribeToContractsBySubcontractor(currentUser.id, setContracts);
+    return () => unsub();
+  }, [currentUser?.id]);
+
+  // Subscribe to jobs
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const unsub = subscribeToJobs((jobs) => {
+      setAllFirestoreJobs(jobs.filter(j =>
+        j.subcontractorId === currentUser.id || j.status === 'available'
+      ));
+    });
+    return () => unsub();
+  }, [currentUser?.id]);
+
+  const hasExtendedContracts = contracts.some(c => c.status === 'active');
+
+  const upcomingJobs = allFirestoreJobs
+    .filter(j => j.subcontractorId === currentUser?.id &&
+      (j.status === 'assigned' || j.status === 'in-progress'))
+    .map(j => ({
+      id: j.id,
+      date: j.scheduledDate.toDate().toLocaleDateString('en-AU', { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      client: j.clientName,
+      location: j.location,
+      type: j.type,
+      duration: `${j.duration} hours`,
+      rate: `$${j.rate}`,
+    }));
+
+  const recentJobs = allFirestoreJobs
+    .filter(j => j.subcontractorId === currentUser?.id && j.status === 'completed')
+    .slice(0, 10)
+    .map(j => ({
+      date: j.scheduledDate.toDate().toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' }),
+      client: j.clientName,
+      duration: `${j.duration} hrs`,
+      earnings: `$${j.rate * j.duration}`,
+    }));
+
+  const availableJobs = allFirestoreJobs
+    .filter(j => j.status === 'available')
+    .slice(0, hasExtendedContracts ? 2 : 3)
+    .map(j => ({
+      id: j.id,
+      location: j.location,
+      distance: '', // Not available in CleaningJob
+      rate: `$${j.rate}/hr`,
+      date: j.scheduledDate.toDate().toLocaleDateString('en-AU', { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      type: j.type,
+      duration: `${j.duration} hours`,
+    }));
 
   const stats = [
-    { icon: TrendingUp, label: 'This Month', value: '$2,450' },
-    { icon: Clock, label: 'Hours Worked', value: '48 hrs' },
-    { icon: CheckCircle, label: 'Jobs Completed', value: (24 + acceptedJobs.length).toString() },
+    { icon: TrendingUp, label: 'This Month', value: `$${upcomingJobs.reduce((sum, j) => sum + parseInt(j.rate), 0)}` },
+    { icon: Clock, label: 'Hours Worked', value: `${upcomingJobs.reduce((sum, j) => sum + parseInt(j.duration), 0)} hrs` },
+    { icon: CheckCircle, label: 'Jobs Completed', value: (recentJobs.length + acceptedJobs.length).toString() },
     { icon: Calendar, label: 'Offers Rescheduled', value: rescheduledOffers.toString() },
   ];
 
@@ -180,72 +238,13 @@ export default function SubcontractorPortal() {
     }, 4000);
   };
 
-  const contracts = [
-    {
-      id: 1,
-      client: 'Tech Startup HQ',
-      type: 'Extended - 6 months',
-      startDate: 'Feb 2025',
-      endDate: 'Aug 2025',
-      frequency: 'Twice weekly',
-      hourlyRate: '$65/hr',
-      status: 'Active',
-      jobsCompleted: 14,
-    },
-    {
-      id: 2,
-      client: 'Finance Corp Ltd',
-      type: 'Extended - 3 months',
-      startDate: 'Jan 2025',
-      endDate: 'Apr 2025',
-      frequency: 'Weekly',
-      hourlyRate: '$60/hr',
-      status: 'Active',
-      jobsCompleted: 10,
-    },
-  ];
-
-  const initialUpcomingJobs = [
-    { id: 1, date: 'Tomorrow, 10:00 AM', client: 'Tech Startup HQ', location: 'Sydney Office', type: 'Standard Clean', duration: '4 hours', rate: '$65' },
-    { id: 2, date: 'Wednesday, 2:00 PM', client: 'Finance Corp Ltd', location: 'CBD', type: 'Deep Clean', duration: '6 hours', rate: '$60' },
-    { id: 3, date: 'Friday, 9:00 AM', client: 'Tech Startup HQ', location: 'Sydney Office', type: 'Standard Clean', duration: '4 hours', rate: '$65' },
-  ];
-
-  const [upcomingJobs, setUpcomingJobs] = useState(initialUpcomingJobs);
-
-  const initialRecentJobs = [
-    { date: 'Mar 12, 2025', client: 'Tech Startup HQ', duration: '4 hrs', earnings: '$260' },
-    { date: 'Mar 10, 2025', client: 'Finance Corp Ltd', duration: '6 hrs', earnings: '$360' },
-    { date: 'Mar 8, 2025', client: 'Tech Startup HQ', duration: '4 hrs', earnings: '$260' },
-    { date: 'Mar 5, 2025', client: 'Finance Corp Ltd', duration: '6 hrs', earnings: '$360' },
-    { date: 'Mar 3, 2025', client: 'Tech Startup HQ', duration: '4 hrs', earnings: '$260' },
-    { date: 'Feb 28, 2025', client: 'Medical Clinic', duration: '3 hrs', earnings: '$120' },
-    { date: 'Feb 26, 2025', client: 'Finance Corp Ltd', duration: '6 hrs', earnings: '$360' },
-    { date: 'Feb 24, 2025', client: 'Retail Store', duration: '4 hrs', earnings: '$140' },
-    { date: 'Feb 22, 2025', client: 'Tech Startup HQ', duration: '4 hrs', earnings: '$260' },
-    { date: 'Feb 20, 2025', client: 'Office Complex', duration: '4 hrs', earnings: '$152' },
-  ];
-
-  const [recentJobs, setRecentJobs] = useState(initialRecentJobs);
-
-  // Available jobs - show fewer for extended contracts, more for short
-  const allAvailableJobs: AvailableJob[] = [
-    { id: 4, location: 'Medical Clinic', distance: '2.5 km away', rate: '$40/hr', date: 'Tomorrow, 9 AM', type: 'Medical Facility Clean', duration: '3 hours' },
-    { id: 5, location: 'Retail Store', distance: '3.1 km away', rate: '$35/hr', date: 'Thursday, 6 PM', type: 'Retail Clean', duration: '4 hours' },
-    { id: 6, location: 'Office Complex', distance: '4.8 km away', rate: '$38/hr', date: 'Friday, 2 PM', type: 'Office Clean', duration: '4 hours' },
-  ];
-
-  // Show fewer jobs (2) for extended contract holders
-  const availableJobs = hasExtendedContracts ? allAvailableJobs.slice(0, 2) : allAvailableJobs;
-
   const handleAcceptJob = (job: any) => {
-    setUpcomingJobs(prev => prev.filter(j => j.id !== job.id));
     setCurrentAssignment(job);
     setAcceptedJobs(prev => [...prev, job.id]);
     addNotification(`Job accepted! ${job.type} scheduled for ${job.date}. Go to Current Assignment section.`, 'success');
   };
 
-  const handleExpressInterest = (job: AvailableJob) => {
+  const handleExpressInterest = (job: any) => {
     setInterestedJobs(prev => [...prev, job.id]);
     addNotification(`Interest expressed for ${job.location}! 📧 Email sent to RESET team. You'll hear from us within 2 hours.`, 'success');
   };
@@ -267,36 +266,34 @@ export default function SubcontractorPortal() {
     task.completed && task.beforePhoto && task.afterPhoto && task.comments
   );
 
-  const handleMarkJobComplete = () => {
+  const handleMarkJobComplete = async () => {
     if (!allTasksCompleted) {
       addNotification('All tasks must be completed, including photos and comments, before marking the job complete.', 'error');
       return;
     }
     if (currentAssignment) {
-      const completedJob = {
-        date: new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' }),
-        client: currentAssignment.client,
-        duration: currentAssignment.duration,
-        earnings: (parseInt(currentAssignment.rate) * parseInt(currentAssignment.duration)) / 60 + '',
-      };
-      setRecentJobs(prev => [completedJob, ...prev]);
-      setCurrentAssignment(null);
-      setChecklist(checklist.map(item => ({ ...item, completed: false, beforePhoto: undefined, afterPhoto: undefined, comments: undefined })));
-      addNotification('Excellent work! Job marked complete. Payment will be processed within 48 hours.', 'success');
+      try {
+        await updateJob(currentAssignment.id, { status: 'completed' });
+        setCurrentAssignment(null);
+        setChecklist(checklist.map(item => ({ ...item, completed: false, beforePhoto: undefined, afterPhoto: undefined, comments: undefined })));
+        addNotification('Excellent work! Job marked complete. Payment will be processed within 48 hours.', 'success');
+      } catch (error) {
+        addNotification('Failed to mark job complete. Please try again.', 'error');
+        console.error(error);
+      }
     }
   };
 
-  const handleCompleteCurrentJob = () => {
+  const handleCompleteCurrentJob = async () => {
     if (currentAssignment) {
-      const completedJob = {
-        date: new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' }),
-        client: currentAssignment.client,
-        duration: currentAssignment.duration,
-        earnings: (parseInt(currentAssignment.rate) * parseInt(currentAssignment.duration)) / 60 + '',
-      };
-      setRecentJobs(prev => [completedJob, ...prev]);
-      setCurrentAssignment(null);
-      addNotification('Excellent work! Job marked complete. Payment will be processed within 48 hours.', 'success');
+      try {
+        await updateJob(currentAssignment.id, { status: 'completed' });
+        setCurrentAssignment(null);
+        addNotification('Excellent work! Job marked complete. Payment will be processed within 48 hours.', 'success');
+      } catch (error) {
+        addNotification('Failed to mark job complete. Please try again.', 'error');
+        console.error(error);
+      }
     }
   };
 
@@ -311,7 +308,7 @@ export default function SubcontractorPortal() {
     }
   };
 
-  const handleViewContract = (contractId: number) => {
+  const handleViewContract = (contractId: string) => {
     setSelectedContract(selectedContract === contractId ? null : contractId);
   };
 
@@ -418,25 +415,25 @@ export default function SubcontractorPortal() {
     setRescheduleSubmitting(true);
     try {
       const ticketNumber = await generateTicketNumber();
-      await createTicket({
+      const ticketData = {
         ticketNumber,
         userId: currentUser.id,
         userName: currentUser.name,
         userEmail: currentUser.email,
-        userType: 'subcontractor',
-        category: 'reschedule',
+        userType: 'subcontractor' as const,
+        category: 'reschedule' as const,
         subject: `Reschedule Request: ${rescheduleTarget.label}`,
         message: rescheduleForm.reason,
         priority: urgencyToPriority(rescheduleForm.urgency) as 'low' | 'medium' | 'high' | 'urgent',
-        status: 'unassigned',
-        source: 'reschedule-request',
-        attachments: [],
-        jobId: rescheduleTarget.type === 'job' ? String(rescheduleTarget.id) : undefined,
-        contractId: rescheduleTarget.type === 'contract' ? String(rescheduleTarget.id) : undefined,
+        status: 'unassigned' as const,
+        source: 'reschedule-request' as const,
+        ...(rescheduleTarget.type === 'job' && { jobId: String(rescheduleTarget.id) }),
+        ...(rescheduleTarget.type === 'contract' && { contractId: String(rescheduleTarget.id) }),
         requestedDate: rescheduleForm.requestedDate,
         rescheduleReason: rescheduleForm.reason,
         rescheduleUrgency: rescheduleForm.urgency,
-      });
+      };
+      await createTicket(ticketData);
       addNotification('Reschedule request submitted! The RESET team will contact you shortly.', 'success');
       setShowRescheduleModal(false);
       setRescheduleForm({ reason: '', requestedDate: '', urgency: 'flexible' });
@@ -561,64 +558,67 @@ export default function SubcontractorPortal() {
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {contracts.map((contract) => (
-              <div key={contract.id}>
-                <button
-                  onClick={() => handleViewContract(contract.id)}
-                  className="w-full p-6 rounded-lg border-2 border-reset-green/30 hover:border-reset-green/70 transition-all text-left group bg-reset-green/5 hover:bg-reset-green/10"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-bold text-white group-hover:text-reset-green transition-colors mb-1">{contract.client}</h3>
-                      <p className="text-sm text-reset-green font-bold">{contract.type}</p>
+            {contracts.length === 0 ? (
+              <p className="text-gray-400 col-span-2">No contracts found. You'll see them here once the super user creates them.</p>
+            ) : (
+              contracts.map((contract) => (
+                <div key={contract.id}>
+                  <button
+                    onClick={() => handleViewContract(contract.id)}
+                    className="w-full p-6 rounded-lg border-2 border-reset-green/30 hover:border-reset-green/70 transition-all text-left group bg-reset-green/5 hover:bg-reset-green/10"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-bold text-white group-hover:text-reset-green transition-colors mb-1">{contract.clientName}</h3>
+                        <p className="text-sm text-reset-green font-bold">{contract.type}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded text-xs font-bold ${
+                        contract.status === 'active' ? 'bg-reset-green/30 text-reset-green' : 'bg-gray-600/30 text-gray-300'
+                      }`}>
+                        {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
+                      </span>
                     </div>
-                    <span className={`px-3 py-1 rounded text-xs font-bold ${
-                      contract.status === 'Active' ? 'bg-reset-green/30 text-reset-green' : 'bg-gray-600/30 text-gray-300'
-                    }`}>
-                      {contract.status}
-                    </span>
-                  </div>
 
-                  <div className="space-y-2 text-sm text-gray-400 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar size={14} className="text-reset-green" />
-                      {contract.startDate} to {contract.endDate}
+                    <div className="space-y-2 text-sm text-gray-400 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={14} className="text-reset-green" />
+                        {contract.startDate} to {contract.endDate}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-reset-green" />
+                        {contract.frequency}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign size={14} className="text-reset-green" />
+                        {contract.hourlyRate}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock size={14} className="text-reset-green" />
-                      {contract.frequency}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DollarSign size={14} className="text-reset-green" />
-                      {contract.hourlyRate}
-                    </div>
-                  </div>
 
-                  {selectedContract === contract.id && (
-                    <div className="pt-4 border-t border-reset-green/20 text-xs text-gray-400">
-                      <p>Jobs completed: <span className="text-reset-green font-bold">{contract.jobsCompleted}</span></p>
-                    </div>
-                  )}
-                </button>
+                    {selectedContract === contract.id && (
+                      <div className="pt-4 border-t border-reset-green/20 text-xs text-gray-400">
+                        <p>Jobs completed: <span className="text-reset-green font-bold">{contract.jobsCompleted}</span></p>
+                      </div>
+                    )}
+                  </button>
 
-                {/* Contract-specific reschedule button */}
-                <button
-                  onClick={() => {
-                    setRescheduleTarget({
-                      type: 'contract',
-                      id: contract.id,
-                      label: contract.client,
-                      contractId: contract.id,
-                    });
-                    setShowRescheduleModal(true);
-                  }}
-                  className="w-full mt-3 py-2 bg-reset-green/10 text-reset-green rounded-lg hover:bg-reset-green/20 text-xs font-bold transition-colors flex items-center justify-center gap-2"
-                >
-                  <Calendar size={14} />
-                  Request Reschedule
-                </button>
-              </div>
-            ))}
+                  {/* Contract-specific reschedule button */}
+                  <button
+                    onClick={() => {
+                      setRescheduleTarget({
+                        type: 'contract',
+                        id: contract.id,
+                        label: contract.clientName,
+                      });
+                      setShowRescheduleModal(true);
+                    }}
+                    className="w-full mt-3 py-2 bg-reset-green/10 text-reset-green rounded-lg hover:bg-reset-green/20 text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Calendar size={14} />
+                    Request Reschedule
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -1002,10 +1002,12 @@ export default function SubcontractorPortal() {
                       <div className="flex-1">
                         <h3 className="font-bold text-white">{job.location}</h3>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 mt-2">
-                          <span className="flex items-center gap-1">
-                            <MapPin size={14} className="text-reset-green" />
-                            {job.distance}
-                          </span>
+                          {job.distance && (
+                            <span className="flex items-center gap-1">
+                              <MapPin size={14} className="text-reset-green" />
+                              {job.distance}
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
                             <DollarSign size={14} className="text-reset-green" />
                             {job.rate}

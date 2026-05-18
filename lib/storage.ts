@@ -50,3 +50,11 @@ export const uploadFile = async (path: string, file: File): Promise<string> => {
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
 };
+
+export const uploadContractPdf = async (contractId: string, file: File): Promise<string> => {
+  const fileExtension = file.name.split('.').pop();
+  const storageRef = ref(storage, `contracts/${contractId}/signed-contract.${fileExtension}`);
+
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};

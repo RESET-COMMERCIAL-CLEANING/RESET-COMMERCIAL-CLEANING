@@ -27,6 +27,8 @@ export interface Contract {
   status: 'active' | 'completed' | 'cancelled' | 'paused';
   jobsCompleted: number;
   notes?: string;
+  signedPdfUrl?: string;
+  onboardingStatus: 'pending' | 'completed';
   createdAt: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -94,6 +96,20 @@ export const subscribeToContractsBySubcontractor = (
   callback: (contracts: Contract[]) => void
 ) => {
   const q = query(contractsCollection, where('subcontractorId', '==', subcontractorId));
+  return onSnapshot(q, (querySnapshot) => {
+    const contracts = querySnapshot.docs.map(doc => ({
+      ...doc.data() as Contract,
+      id: doc.id,
+    }));
+    callback(contracts);
+  });
+};
+
+export const subscribeToContractsByClient = (
+  clientId: string,
+  callback: (contracts: Contract[]) => void
+) => {
+  const q = query(contractsCollection, where('clientId', '==', clientId));
   return onSnapshot(q, (querySnapshot) => {
     const contracts = querySnapshot.docs.map(doc => ({
       ...doc.data() as Contract,
