@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw, Users, User, Plus, Send, Search } from 'lucide-react';
+import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw, Users, User, Plus, Send, Search, Calendar } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
@@ -15,6 +15,7 @@ import { formatTicketResponseEmail, formatTicketAssignmentEmail, sendEmail } fro
 import { logTicketResponse, logTicketAssignment, logEmailSent, logTicketResolution } from '@/lib/db/activity-log';
 import UserManagement from '@/components/UserManagement';
 import SupportTeamManagement from '@/components/SupportTeamManagement';
+import ContractManagement from '@/components/ContractManagement';
 
 interface TicketComment {
   id: string;
@@ -44,6 +45,13 @@ interface SupportTicket {
   assignedTo?: string;
   assignedToName?: string;
   comments?: TicketComment[];
+  source: 'quote' | 'contact-support' | 'business-owner-portal' | 'subcontractor-portal' | 'admin-created' | 'reschedule-request';
+  sourceLocation?: string;
+  jobId?: string;
+  contractId?: string;
+  requestedDate?: string;
+  rescheduleReason?: string;
+  rescheduleUrgency?: 'same-day' | 'next-day' | 'this-week' | 'flexible';
 }
 
 export default function AdminPortal() {
@@ -56,7 +64,7 @@ export default function AdminPortal() {
   const [responseText, setResponseText] = useState('');
   const [filter, setFilter] = useState<'all' | 'unassigned' | 'assigned' | 'resolved' | 'archived' | 'deleted'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team'>('tickets');
+  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team' | 'contracts'>('tickets');
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [assignToName, setAssignToName] = useState('');
@@ -98,6 +106,7 @@ export default function AdminPortal() {
       createdAt: 'Mar 13, 2025, 2:30 PM',
       status: 'assigned',
       priority: 'medium',
+      source: 'contact-support',
     },
     {
       id: '2',
@@ -113,6 +122,7 @@ export default function AdminPortal() {
       status: 'in-progress',
       priority: 'high',
       response: 'We are investigating this issue. Please check your email for job details.',
+      source: 'subcontractor-portal',
     },
     {
       id: '3',
@@ -129,6 +139,7 @@ export default function AdminPortal() {
       priority: 'high',
       response: 'We have reviewed the issue and assigned a new team for your next cleaning. Apologies for the inconvenience.',
       resolvedAt: 'Mar 12, 2025, 11:30 AM',
+      source: 'business-owner-portal',
     },
     {
       id: '4',
@@ -145,6 +156,7 @@ export default function AdminPortal() {
       priority: 'urgent',
       response: 'Password has been reset. You should receive a new temporary password via email.',
       resolvedAt: 'Mar 10, 2025, 5:00 PM',
+      source: 'admin-created',
     },
     ];
   };
@@ -522,6 +534,17 @@ export default function AdminPortal() {
             <User size={18} />
             Superuser Management
           </button>
+          <button
+            onClick={() => setActiveTab('contracts')}
+            className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'contracts'
+                ? 'bg-reset-green text-black'
+                : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/30'
+            }`}
+          >
+            <Calendar size={18} />
+            Contracts & Schedules
+          </button>
         </div>
 
         {/* Support Tickets Section */}
@@ -824,6 +847,55 @@ export default function AdminPortal() {
                   <h4 className="font-bold text-white mb-3 text-sm">ISSUE DESCRIPTION</h4>
                   <p className="text-gray-300 text-sm leading-relaxed">{selectedTicket.message}</p>
                 </div>
+
+                {/* Reschedule Request Details */}
+                {(selectedTicket.source === 'reschedule-request' || selectedTicket.category === 'reschedule') && (
+                  <div className="mb-6 pb-6 border-b border-green-500/30 bg-green-500/10 rounded-lg p-4">
+                    <h4 className="font-bold text-green-400 mb-4 text-sm flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      RESCHEDULE REQUEST DETAILS
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      {selectedTicket.requestedDate && (
+                        <div>
+                          <span className="text-gray-400">Requested Date:</span>
+                          <p className="text-green-400 font-semibold">{selectedTicket.requestedDate}</p>
+                        </div>
+                      )}
+                      {selectedTicket.rescheduleUrgency && (
+                        <div>
+                          <span className="text-gray-400">Urgency:</span>
+                          <p className={`font-semibold ${
+                            selectedTicket.rescheduleUrgency === 'same-day' ? 'text-red-400' :
+                            selectedTicket.rescheduleUrgency === 'next-day' ? 'text-orange-400' :
+                            selectedTicket.rescheduleUrgency === 'this-week' ? 'text-yellow-400' :
+                            'text-green-400'
+                          }`}>
+                            {selectedTicket.rescheduleUrgency.replace('-', ' ').toUpperCase()}
+                          </p>
+                        </div>
+                      )}
+                      {selectedTicket.jobId && (
+                        <div>
+                          <span className="text-gray-400">Job ID:</span>
+                          <p className="text-green-400 font-semibold">{selectedTicket.jobId}</p>
+                        </div>
+                      )}
+                      {selectedTicket.contractId && (
+                        <div>
+                          <span className="text-gray-400">Contract ID:</span>
+                          <p className="text-green-400 font-semibold">{selectedTicket.contractId}</p>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('contracts')}
+                      className="mt-4 px-3 py-1 text-xs bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 transition-colors font-semibold"
+                    >
+                      View in Contracts & Schedules
+                    </button>
+                  </div>
+                )}
 
                 {/* Response */}
                 {selectedTicket.response && (
@@ -1335,6 +1407,11 @@ export default function AdminPortal() {
               </table>
             </div>
           </motion.div>
+        )}
+
+        {/* Contracts & Schedules Section */}
+        {activeTab === 'contracts' && (
+          <ContractManagement />
         )}
       </div>
       </div>

@@ -2,12 +2,13 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { MapPin, DollarSign, Camera, Clock, LogOut, User, TrendingUp, MessageSquare, CheckCircle, Calendar, X, Heart, AlertCircle } from 'lucide-react';
+import { MapPin, DollarSign, Camera, Clock, LogOut, User, TrendingUp, MessageSquare, CheckCircle, Calendar, X, Heart, AlertCircle, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout, getUserProfile } from '@/lib/auth';
 import { uploadBeforeAfterPhoto } from '@/lib/storage';
 import { SupportModal } from '@/components/SupportModal';
+import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
 
 interface Notification {
   id: string;
@@ -58,6 +59,19 @@ export default function SubcontractorPortal() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState<{
+    type: 'job' | 'contract';
+    id: string | number;
+    label: string;
+    contractId?: number;
+  } | null>(null);
+  const [rescheduleForm, setRescheduleForm] = useState({
+    reason: '',
+    requestedDate: '',
+    urgency: 'flexible' as 'same-day' | 'next-day' | 'this-week' | 'flexible',
+  });
+  const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -288,10 +302,12 @@ export default function SubcontractorPortal() {
 
   const handleRescheduleCurrentJob = () => {
     if (currentAssignment) {
-      setUpcomingJobs(prev => [...prev, currentAssignment]);
-      setCurrentAssignment(null);
-      setRescheduledOffers(prev => prev + 1);
-      addNotification('Job rescheduled. Check the upcoming jobs section.', 'info');
+      setRescheduleTarget({
+        type: 'job',
+        id: currentAssignment.id,
+        label: `${currentAssignment.type} - ${currentAssignment.client}`,
+      });
+      setShowRescheduleModal(true);
     }
   };
 
@@ -379,6 +395,59 @@ export default function SubcontractorPortal() {
     { day: 'Thu', hours: 6, jobs: ['Finance Corp Ltd - 6 hrs'] },
     { day: 'Fri', hours: 4, jobs: ['Tech Startup HQ - 4 hrs'] },
   ];
+
+  const urgencyToPriority = (urgency: string) => {
+    switch (urgency) {
+      case 'same-day':
+        return 'urgent';
+      case 'next-day':
+        return 'high';
+      case 'this-week':
+        return 'medium';
+      default:
+        return 'low';
+    }
+  };
+
+  const handleRescheduleSubmit = async () => {
+    if (!rescheduleTarget || !rescheduleForm.reason.trim() || !rescheduleForm.requestedDate) {
+      addNotification('Please fill in all fields', 'error');
+      return;
+    }
+
+    setRescheduleSubmitting(true);
+    try {
+      const ticketNumber = await generateTicketNumber();
+      await createTicket({
+        ticketNumber,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        userType: 'subcontractor',
+        category: 'reschedule',
+        subject: `Reschedule Request: ${rescheduleTarget.label}`,
+        message: rescheduleForm.reason,
+        priority: urgencyToPriority(rescheduleForm.urgency) as 'low' | 'medium' | 'high' | 'urgent',
+        status: 'unassigned',
+        source: 'reschedule-request',
+        attachments: [],
+        jobId: rescheduleTarget.type === 'job' ? String(rescheduleTarget.id) : undefined,
+        contractId: rescheduleTarget.type === 'contract' ? String(rescheduleTarget.id) : undefined,
+        requestedDate: rescheduleForm.requestedDate,
+        rescheduleReason: rescheduleForm.reason,
+        rescheduleUrgency: rescheduleForm.urgency,
+      });
+      addNotification('Reschedule request submitted! The RESET team will contact you shortly.', 'success');
+      setShowRescheduleModal(false);
+      setRescheduleForm({ reason: '', requestedDate: '', urgency: 'flexible' });
+      setRescheduleTarget(null);
+    } catch (error) {
+      addNotification('Failed to submit request. Please try again.', 'error');
+      console.error(error);
+    } finally {
+      setRescheduleSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black pt-32 pb-20">
@@ -532,13 +601,21 @@ export default function SubcontractorPortal() {
                   )}
                 </button>
 
-                {/* Contract-specific support button */}
+                {/* Contract-specific reschedule button */}
                 <button
-                  onClick={() => setShowSupportModal(true)}
+                  onClick={() => {
+                    setRescheduleTarget({
+                      type: 'contract',
+                      id: contract.id,
+                      label: contract.client,
+                      contractId: contract.id,
+                    });
+                    setShowRescheduleModal(true);
+                  }}
                   className="w-full mt-3 py-2 bg-reset-green/10 text-reset-green rounded-lg hover:bg-reset-green/20 text-xs font-bold transition-colors flex items-center justify-center gap-2"
                 >
-                  <MessageSquare size={14} />
-                  Discuss Reschedule/Accept
+                  <Calendar size={14} />
+                  Request Reschedule
                 </button>
               </div>
             ))}
@@ -596,14 +673,29 @@ export default function SubcontractorPortal() {
                   {upcomingJobs.length > 0 ? (
                     upcomingJobs.map((job) => (
                       <div key={job.id} className="p-3 border border-reset-green/20 rounded-lg text-sm">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
-                          <div className="flex-1">
-                            <p className="font-bold text-white text-sm">{job.date}</p>
-                            <p className="text-xs text-gray-400">{job.location} • {job.type}</p>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+                            <div className="flex-1">
+                              <p className="font-bold text-white text-sm">{job.date}</p>
+                              <p className="text-xs text-gray-400">{job.location} • {job.type}</p>
+                            </div>
+                            <div className="text-sm sm:text-right">
+                              <p className="text-xs text-reset-green font-bold">{job.duration}</p>
+                            </div>
                           </div>
-                          <div className="text-sm sm:text-right">
-                            <p className="text-xs text-reset-green font-bold">{job.duration}</p>
-                          </div>
+                          <button
+                            onClick={() => {
+                              setRescheduleTarget({
+                                type: 'job',
+                                id: job.id,
+                                label: `${job.type} - ${job.client}`,
+                              });
+                              setShowRescheduleModal(true);
+                            }}
+                            className="px-2 py-1 text-xs bg-reset-green/10 text-reset-green rounded hover:bg-reset-green/20 transition-colors self-start font-semibold"
+                          >
+                            Request Reschedule
+                          </button>
                         </div>
                       </div>
                     ))
@@ -997,6 +1089,114 @@ export default function SubcontractorPortal() {
           source="subcontractor-portal"
         />
       )}
+
+      {/* Reschedule Modal */}
+      <AnimatePresence>
+        {showRescheduleModal && rescheduleTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              setShowRescheduleModal(false);
+              setRescheduleForm({ reason: '', requestedDate: '', urgency: 'flexible' });
+              setRescheduleTarget(null);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gray-900 rounded-lg border border-reset-green/30 p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">Request Reschedule</h2>
+                <button
+                  onClick={() => {
+                    setShowRescheduleModal(false);
+                    setRescheduleForm({ reason: '', requestedDate: '', urgency: 'flexible' });
+                    setRescheduleTarget(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Reference (Read-only) */}
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Job/Contract Reference</label>
+                  <div className="px-4 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm">
+                    {rescheduleTarget.label}
+                  </div>
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Reason for Rescheduling *</label>
+                  <textarea
+                    value={rescheduleForm.reason}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, reason: e.target.value })}
+                    placeholder="Please explain why you need to reschedule this job..."
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-reset-green h-24"
+                  />
+                </div>
+
+                {/* Preferred New Date/Time */}
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Preferred New Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    value={rescheduleForm.requestedDate}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, requestedDate: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-reset-green"
+                  />
+                </div>
+
+                {/* Urgency */}
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">How Urgent is This Reschedule?</label>
+                  <select
+                    value={rescheduleForm.urgency}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, urgency: e.target.value as any })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-reset-green"
+                  >
+                    <option value="flexible">Flexible (Not urgent)</option>
+                    <option value="this-week">This Week</option>
+                    <option value="next-day">Next Day</option>
+                    <option value="same-day">Same Day (Urgent)</option>
+                  </select>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-6">
+                  <button
+                    onClick={handleRescheduleSubmit}
+                    disabled={rescheduleSubmitting}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-reset-green text-black rounded-lg font-bold hover:bg-reset-green/90 transition disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                    {rescheduleSubmitting ? 'Submitting...' : 'Submit Request'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowRescheduleModal(false);
+                      setRescheduleForm({ reason: '', requestedDate: '', urgency: 'flexible' });
+                      setRescheduleTarget(null);
+                    }}
+                    className="flex-1 px-6 py-3 bg-gray-800 text-white rounded-lg font-bold hover:bg-gray-700 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

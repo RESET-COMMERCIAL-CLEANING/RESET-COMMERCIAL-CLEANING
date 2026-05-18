@@ -10,6 +10,7 @@ import {
   query,
   where,
   Timestamp,
+  onSnapshot,
 } from 'firebase/firestore';
 
 export interface ChecklistItem {
@@ -31,11 +32,14 @@ export interface CleaningJob {
   clientName: string;
   subcontractorId?: string;
   subcontractorName?: string;
+  contractId?: string;
   scheduledDate: Timestamp;
   duration: number;
   rate: number;
   status: 'available' | 'assigned' | 'in-progress' | 'completed';
   checklist: ChecklistItem[];
+  rescheduleRequestedAt?: Timestamp;
+  rescheduleTicketId?: string;
   createdAt: Timestamp;
 }
 
@@ -92,4 +96,14 @@ export const deleteJob = async (jobId: string): Promise<void> => {
 
 export const updateJobChecklist = async (jobId: string, checklist: ChecklistItem[]): Promise<void> => {
   await updateJob(jobId, { checklist });
+};
+
+export const subscribeToJobs = (callback: (jobs: CleaningJob[]) => void) => {
+  return onSnapshot(jobsCollection, (querySnapshot) => {
+    const jobs = querySnapshot.docs.map(doc => ({
+      ...doc.data() as CleaningJob,
+      id: doc.id,
+    }));
+    callback(jobs);
+  });
 };

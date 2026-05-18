@@ -51,10 +51,16 @@ export interface SupportTicket {
   assignedTo?: string;
   assignedToName?: string;
   // Source tracking
-  source: 'quote' | 'contact-support' | 'business-owner-portal' | 'subcontractor-portal' | 'admin-created';
+  source: 'quote' | 'contact-support' | 'business-owner-portal' | 'subcontractor-portal' | 'admin-created' | 'reschedule-request';
   sourceLocation?: string;
   // Internal comments between superuser and support member
   comments?: TicketComment[];
+  // Reschedule-specific fields
+  jobId?: string;
+  contractId?: string;
+  requestedDate?: string;
+  rescheduleReason?: string;
+  rescheduleUrgency?: 'same-day' | 'next-day' | 'this-week' | 'flexible';
 }
 
 const ticketsCollection = collection(db, 'tickets');
