@@ -69,6 +69,16 @@ export interface UserProfile {
   weeklyAvailableHours?: number;
   references?: string;
   ecoFriendlyCapable?: boolean;
+
+  // --- Availability & Scheduling ---
+  unavailableDates?: Array<{
+    date: string;              // ISO date string "2026-05-25"
+    reason?: string;           // e.g. "Sick leave", "Family emergency"
+    markedAt?: Timestamp;
+  }>;
+  workingDays?: string[];      // e.g. ["Mon", "Tue", "Wed", "Thu", "Fri"]
+  serviceStartTime?: string;   // HH:mm 24h format e.g. "09:00"
+  serviceEndTime?: string;     // HH:mm 24h format e.g. "17:00"
 }
 
 const usersCollection = collection(db, 'users');

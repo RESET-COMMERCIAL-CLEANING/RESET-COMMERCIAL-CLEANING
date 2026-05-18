@@ -1,12 +1,22 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check, X, Search, ChevronDown, AlertCircle, Shield, Calendar } from 'lucide-react';
+import { Check, X, Search, ChevronDown, AlertCircle, Shield, Calendar, AlertTriangle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { subscribeToAllContracts, createContract, updateContract, Contract } from '@/lib/db/contracts';
 import { subscribeToAllUsers, UserProfile } from '@/lib/db/users';
 import { Toast, useToast } from '@/components/Toast';
+
+// Frequency to visits per month mapping
+const FREQUENCY_VISITS: Record<string, number> = {
+  'daily': 22,
+  'twice-weekly': 8,
+  'weekly': 4,
+  'bi-weekly': 2,
+  'monthly': 1,
+  'one-time': 0.5,
+};
 
 export default function ContractManagement() {
   const { toasts, addToast, removeToast } = useToast();
@@ -20,6 +30,9 @@ export default function ContractManagement() {
   const [showRemovalPrompt, setShowRemovalPrompt] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [availabilityWarning, setAvailabilityWarning] = useState<{ conflictDates: string[]; count: number } | null>(null);
+  const [overrideWarning, setOverrideWarning] = useState(false);
+  const [pendingAssignmentSub, setPendingAssignmentSub] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const unsub1 = subscribeToAllUsers(setAllUsers);
@@ -61,6 +74,52 @@ export default function ContractManagement() {
     return allUsers.find(u => u.id === subId) || null;
   };
 
+  // Generate projected job dates for next 30 days based on frequency
+  const getProjectedJobDates = (client: UserProfile): string[] => {
+    const dates: string[] = [];
+    const frequency = client.cleaningFrequency || 'weekly';
+    const visitsPerMonth = FREQUENCY_VISITS[frequency] || 4;
+    const today = new Date();
+
+    // Simple approximation: distribute visits evenly over 30 days
+    const daysPerVisit = Math.ceil(30 / visitsPerMonth);
+    for (let i = 0; i < visitsPerMonth && i < 10; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i * daysPerVisit);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+    return dates;
+  };
+
+  // Check if subcontractor is available on projected dates
+  const checkSubcontractorAvailability = (subcontractor: UserProfile, client: UserProfile): { hasConflict: boolean; conflictDates: string[] } => {
+    const projectedDates = getProjectedJobDates(client);
+    const unavailableDates = subcontractor.unavailableDates || [];
+    const workingDays = subcontractor.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    const conflictDates: string[] = [];
+
+    projectedDates.forEach(dateStr => {
+      const date = new Date(dateStr);
+      const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
+
+      // Check if on unavailable date
+      const isUnavailable = unavailableDates.some(u => u.date === dateStr);
+
+      // Check if on non-working day
+      const isWorkingDay = workingDays.includes(dayName);
+
+      if (isUnavailable || !isWorkingDay) {
+        conflictDates.push(dateStr);
+      }
+    });
+
+    return {
+      hasConflict: conflictDates.length > 0,
+      conflictDates,
+    };
+  };
+
   const formatDate = (date: string | Timestamp | undefined): string => {
     if (!date) return 'N/A';
     if (date instanceof Timestamp) {
@@ -71,6 +130,18 @@ export default function ContractManagement() {
 
   const handleAssignSubcontractor = async (subcontractor: UserProfile) => {
     if (!selectedClient) return;
+
+    // Check availability first
+    const availability = checkSubcontractorAvailability(subcontractor, selectedClient);
+
+    if (availability.hasConflict && !overrideWarning) {
+      setAvailabilityWarning({
+        conflictDates: availability.conflictDates,
+        count: availability.conflictDates.length,
+      });
+      setPendingAssignmentSub(subcontractor);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -86,9 +157,13 @@ export default function ContractManagement() {
         endDate: '',
         jobsCompleted: 0,
         onboardingStatus: 'completed',
+        originalAssignedSubId: subcontractor.id,
       });
       setShowAssignSubcontractor(false);
       setSubcontractorSearchQuery('');
+      setAvailabilityWarning(null);
+      setPendingAssignmentSub(null);
+      setOverrideWarning(false);
       addToast(`${subcontractor.firstName} assigned to ${selectedClient.company}`, 'success');
     } catch (error) {
       addToast('Failed to assign subcontractor', 'error');
@@ -461,6 +536,92 @@ export default function ContractManagement() {
           </div>
         )}
       </div>
+
+      {/* Availability Warning Modal */}
+      {availabilityWarning && pendingAssignmentSub && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setAvailabilityWarning(null);
+            setPendingAssignmentSub(null);
+            setOverrideWarning(false);
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-gray-900 rounded-lg border border-yellow-600/30 p-8 max-w-lg w-full"
+          >
+            <div className="flex items-start gap-4 mb-6">
+              <AlertTriangle className="w-8 h-8 text-yellow-400 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="text-xl font-bold text-white">Availability Conflict</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  {pendingAssignmentSub.firstName} {pendingAssignmentSub.lastName} has unavailable dates that overlap with this contract's projected schedule.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-4 mb-6">
+              <p className="text-sm text-yellow-400 font-semibold mb-3">Conflicting Dates:</p>
+              <div className="flex flex-wrap gap-2">
+                {availabilityWarning.conflictDates.slice(0, 5).map((date) => (
+                  <span key={date} className="text-xs bg-yellow-600/30 text-yellow-300 px-2 py-1 rounded">
+                    {new Date(date).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}
+                  </span>
+                ))}
+                {availabilityWarning.conflictDates.length > 5 && (
+                  <span className="text-xs text-yellow-400 px-2 py-1">+{availabilityWarning.conflictDates.length - 5} more</span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={overrideWarning}
+                  onChange={(e) => setOverrideWarning(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-800 text-reset-green"
+                />
+                <span className="text-sm text-gray-300">I understand the conflict and want to assign anyway. I'll manage reassignments if needed.</span>
+              </label>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    if (overrideWarning && pendingAssignmentSub) {
+                      handleAssignSubcontractor(pendingAssignmentSub);
+                      setAvailabilityWarning(null);
+                      setPendingAssignmentSub(null);
+                      setOverrideWarning(false);
+                    }
+                  }}
+                  disabled={!overrideWarning || isSubmitting}
+                  className="flex-1 px-4 py-3 bg-reset-green text-black rounded-lg font-bold hover:bg-reset-green/80 transition-colors disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Assigning...' : 'Assign Anyway'}
+                </button>
+                <button
+                  onClick={() => {
+                    setAvailabilityWarning(null);
+                    setPendingAssignmentSub(null);
+                    setOverrideWarning(false);
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-800 text-white rounded-lg font-bold hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </>
   );
 }

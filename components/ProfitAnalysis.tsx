@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { subscribeToAllContracts, Contract } from '@/lib/db/contracts';
 import { subscribeToAllUsers, UserProfile } from '@/lib/db/users';
-import { TrendingUp, DollarSign, Users, Zap } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, Zap, AlertCircle } from 'lucide-react';
 
 const PROPERTY_TYPE_RATES: Record<string, number> = {
   office: 75,
@@ -242,6 +242,56 @@ export default function ProfitAnalysis() {
                   </div>
                 </div>
               )}
+
+              {/* Contract Variance Tracking */}
+              {selected && (() => {
+                const subProfile = users.find(u => u.id === selected.subcontractorId);
+                return (
+                <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                  <h4 className="font-bold text-white mb-4 flex items-center gap-2">
+                    <AlertCircle size={18} />
+                    Contract Variance Tracking
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-400">Projected Jobs/Month</p>
+                        <p className="text-lg font-bold text-white">{selected.projectedJobsPerMonth || selected.visitsPerMonth || 4}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400">Completed This Month</p>
+                        <p className="text-lg font-bold text-reset-green">{selected.actualJobsCompletedThisMonth || 0}</p>
+                      </div>
+                    </div>
+
+                    {selected.variancePercent !== undefined && selected.variancePercent > 0 && (
+                      <div className="p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
+                        <p className="text-sm text-yellow-400 font-semibold mb-2">Variance: {selected.variancePercent.toFixed(1)}%</p>
+                        {selected.varianceReason && (
+                          <p className="text-xs text-gray-300">{selected.varianceReason}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {subProfile && subProfile.unavailableDates && subProfile.unavailableDates.length > 0 && (
+                      <div className="border-t border-gray-700 pt-3">
+                        <p className="text-xs text-gray-400 mb-2 font-semibold">Recent Unavailability</p>
+                        <div className="flex flex-wrap gap-2">
+                          {subProfile.unavailableDates.slice(0, 3).map((u, i) => (
+                            <span key={i} className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded">
+                              {u.date}{u.reason ? ` - ${u.reason}` : ''}
+                            </span>
+                          ))}
+                          {subProfile.unavailableDates.length > 3 && (
+                            <span className="text-xs text-gray-500">+{subProfile.unavailableDates.length - 3} more</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                );
+              })()}
 
               {/* Cost Breakdown Table */}
               <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">

@@ -74,6 +74,13 @@ export default function SubcontractorPortal() {
     urgency: 'flexible' as 'same-day' | 'next-day' | 'this-week' | 'flexible',
   });
   const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
+  const [showUnavailableModal, setShowUnavailableModal] = useState(false);
+  const [unavailableForm, setUnavailableForm] = useState({
+    dateFrom: '',
+    dateTo: '',
+    reason: '',
+  });
+  const [unavailableSubmitting, setUnavailableSubmitting] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -446,6 +453,65 @@ export default function SubcontractorPortal() {
     }
   };
 
+  const handleUnavailableSubmit = async () => {
+    if (!unavailableForm.dateFrom || !unavailableForm.dateTo || !unavailableForm.reason.trim()) {
+      addNotification('Please fill in all fields', 'error');
+      return;
+    }
+
+    const fromDate = new Date(unavailableForm.dateFrom);
+    const toDate = new Date(unavailableForm.dateTo);
+
+    if (toDate < fromDate) {
+      addNotification('End date must be after start date', 'error');
+      return;
+    }
+
+    setUnavailableSubmitting(true);
+    try {
+      const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+      const userId = userProfile.id || currentUser?.id;
+
+      if (!userId) {
+        addNotification('User ID not found', 'error');
+        return;
+      }
+
+      // Generate array of unavailable dates from dateFrom to dateTo
+      const unavailableDates = [];
+      const currentDate = new Date(fromDate);
+      while (currentDate <= toDate) {
+        unavailableDates.push({
+          date: currentDate.toISOString().split('T')[0],
+          reason: unavailableForm.reason,
+          markedAt: new Date().toISOString(),
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Get existing unavailableDates from profile
+      const existingUnavailable = userProfile.unavailableDates || [];
+      const updatedUnavailable = [...existingUnavailable, ...unavailableDates];
+
+      // Call updateUser
+      const { updateUser } = await import('@/lib/db/users');
+      await updateUser(userId, { unavailableDates: updatedUnavailable });
+
+      addNotification(`Marked unavailable from ${unavailableForm.dateFrom} to ${unavailableForm.dateTo}. Clients will see this in your availability.`, 'success');
+      setShowUnavailableModal(false);
+      setUnavailableForm({ dateFrom: '', dateTo: '', reason: '' });
+
+      // Update local profile
+      const updatedProfile = { ...userProfile, unavailableDates: updatedUnavailable };
+      localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+    } catch (error) {
+      addNotification('Failed to update availability. Please try again.', 'error');
+      console.error(error);
+    } finally {
+      setUnavailableSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black pt-32 pb-20">
       {/* Notifications */}
@@ -549,13 +615,22 @@ export default function SubcontractorPortal() {
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Your Extended Contracts</h2>
-            <button
-              onClick={() => setShowSupportModal(true)}
-              className="px-4 py-2 bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 text-sm font-bold transition-colors flex items-center gap-2"
-            >
-              <MessageSquare size={16} />
-              Support
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUnavailableModal(true)}
+                className="px-4 py-2 bg-yellow-600/20 text-yellow-400 rounded-lg hover:bg-yellow-600/30 text-sm font-bold transition-colors flex items-center gap-2"
+              >
+                <AlertCircle size={16} />
+                Mark Unavailable
+              </button>
+              <button
+                onClick={() => setShowSupportModal(true)}
+                className="px-4 py-2 bg-reset-green/20 text-reset-green rounded-lg hover:bg-reset-green/30 text-sm font-bold transition-colors flex items-center gap-2"
+              >
+                <MessageSquare size={16} />
+                Support
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {contracts.length === 0 ? (
@@ -1188,6 +1263,106 @@ export default function SubcontractorPortal() {
                       setShowRescheduleModal(false);
                       setRescheduleForm({ reason: '', requestedDate: '', urgency: 'flexible' });
                       setRescheduleTarget(null);
+                    }}
+                    className="flex-1 px-6 py-3 bg-gray-800 text-white rounded-lg font-bold hover:bg-gray-700 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mark Unavailable Modal */}
+      <AnimatePresence>
+        {showUnavailableModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              setShowUnavailableModal(false);
+              setUnavailableForm({ dateFrom: '', dateTo: '', reason: '' });
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gray-900 rounded-lg border border-yellow-600/30 p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">Mark Unavailable</h2>
+                <button
+                  onClick={() => {
+                    setShowUnavailableModal(false);
+                    setUnavailableForm({ dateFrom: '', dateTo: '', reason: '' });
+                  }}
+                  className="text-gray-400 hover:text-white transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Info Box */}
+                <div className="p-4 bg-yellow-900/20 border border-yellow-600/50 rounded-lg">
+                  <p className="text-sm text-yellow-400">
+                    <strong>Note:</strong> Marking dates as unavailable will alert the RESET team and clients. You won't be assigned new jobs for these dates.
+                  </p>
+                </div>
+
+                {/* Start Date */}
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">From Date *</label>
+                  <input
+                    type="date"
+                    value={unavailableForm.dateFrom}
+                    onChange={(e) => setUnavailableForm({ ...unavailableForm, dateFrom: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-yellow-600"
+                  />
+                </div>
+
+                {/* End Date */}
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">To Date *</label>
+                  <input
+                    type="date"
+                    value={unavailableForm.dateTo}
+                    onChange={(e) => setUnavailableForm({ ...unavailableForm, dateTo: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-yellow-600"
+                  />
+                </div>
+
+                {/* Reason */}
+                <div>
+                  <label className="block text-sm text-gray-300 mb-2">Reason for Unavailability *</label>
+                  <textarea
+                    value={unavailableForm.reason}
+                    onChange={(e) => setUnavailableForm({ ...unavailableForm, reason: e.target.value })}
+                    placeholder="e.g., Sick leave, Family emergency, Training, Vacation..."
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-yellow-600 h-24"
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-6">
+                  <button
+                    onClick={handleUnavailableSubmit}
+                    disabled={unavailableSubmitting}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-yellow-600 text-white rounded-lg font-bold hover:bg-yellow-700 transition disabled:opacity-50"
+                  >
+                    <AlertCircle className="w-4 h-4" />
+                    {unavailableSubmitting ? 'Saving...' : 'Mark Unavailable'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowUnavailableModal(false);
+                      setUnavailableForm({ dateFrom: '', dateTo: '', reason: '' });
                     }}
                     className="flex-1 px-6 py-3 bg-gray-800 text-white rounded-lg font-bold hover:bg-gray-700 transition"
                   >

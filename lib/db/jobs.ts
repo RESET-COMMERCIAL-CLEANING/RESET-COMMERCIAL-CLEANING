@@ -41,6 +41,18 @@ export interface CleaningJob {
   rescheduleRequestedAt?: Timestamp;
   rescheduleTicketId?: string;
   createdAt: Timestamp;
+
+  // --- Reassignment tracking (hybrid availability approach) ---
+  originalAssignedSubId?: string;    // who was originally assigned
+  currentAssignedSubId?: string;     // current assignment (may differ from subcontractorId)
+  rescheduleCount?: number;          // how many times rescheduled
+  rescheduleHistory?: Array<{
+    from: string;                    // subcontractor ID
+    to?: string;                     // replacement ID (null if just rescheduled)
+    reason: string;                  // from reschedule ticket
+    requestedAt: Timestamp;
+    fulfilledAt?: Timestamp;
+  }>;
 }
 
 const jobsCollection = collection(db, 'jobs');

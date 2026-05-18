@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Calendar, Clock, AlertCircle, CheckCircle, Filter } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, CheckCircle, Filter, AlertTriangle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { subscribeToAllContracts, updateContract, Contract } from '@/lib/db/contracts';
@@ -110,6 +110,28 @@ export default function Schedule() {
     }
   };
 
+  const checkJobAvailability = (job: CleaningJob): boolean => {
+    if (!job.subcontractorId) return true;
+
+    const subcontractor = users.find(u => u.id === job.subcontractorId);
+    if (!subcontractor) return true;
+
+    const jobDate = job.scheduledDate instanceof Timestamp
+      ? job.scheduledDate.toDate().toISOString().split('T')[0]
+      : new Date(job.scheduledDate).toISOString().split('T')[0];
+
+    const unavailableDates = subcontractor.unavailableDates || [];
+    const isUnavailable = unavailableDates.some(u => u.date === jobDate);
+
+    if (isUnavailable) return false;
+
+    const workingDays = subcontractor.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const jobDateObj = new Date(jobDate);
+    const dayName = jobDateObj.toLocaleDateString('en-AU', { weekday: 'short' });
+
+    return workingDays.includes(dayName);
+  };
+
   return (
     <>
       <Toast toasts={toasts} onRemove={removeToast} />
@@ -198,8 +220,14 @@ export default function Schedule() {
                 <p className="text-gray-400 text-center py-6">No jobs scheduled for this contract</p>
               ) : (
                 <div className="space-y-3">
-                  {associatedJobs.map((job) => (
-                    <div key={job.id} className={`p-4 rounded-lg border ${getStatusColor(job.status)}`}>
+                  {associatedJobs.map((job) => {
+                    const isAvailable = checkJobAvailability(job);
+                    const cardColor = !isAvailable && (job.status === 'assigned' || job.status === 'in-progress')
+                      ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/50'
+                      : getStatusColor(job.status);
+
+                    return (
+                    <div key={job.id} className={`p-4 rounded-lg border ${cardColor}`}>
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <p className="font-bold text-white">{job.type}</p>
@@ -251,8 +279,16 @@ export default function Schedule() {
                           )}
                         </>
                       )}
+
+                      {!isAvailable && (job.status === 'assigned' || job.status === 'in-progress') && (
+                        <div className="mt-3 pt-3 border-t border-current/30 flex items-start gap-2 text-xs text-yellow-400">
+                          <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+                          <span>Subcontractor unavailable on this date. Please reschedule or reassign.</span>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

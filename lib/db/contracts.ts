@@ -45,6 +45,23 @@ export interface Contract {
   totalHoursCompleted?: number;     // sum of all completed job durations
   actualRevenue?: number;           // total revenue earned
   actualSubcontractorCost?: number; // total paid to subcontractor
+
+  // --- Variance tracking (hybrid availability approach) ---
+  projectedJobsPerMonth?: number;    // initial estimate from frequency
+  actualJobsCompletedThisMonth?: number;
+  variancePercent?: number;          // ((projected - actual) / projected) × 100
+  varianceReason?: string;           // e.g. "Subcontractor unavailable X days"
+  lastVarianceUpdateAt?: Timestamp;
+
+  // --- Reassignment tracking ---
+  originalAssignedSubId?: string;    // track who was originally assigned
+  replacementSubId?: string;         // track reassignments
+  reassignmentHistory?: Array<{
+    from: string;                    // subcontractor ID
+    to: string;                      // replacement ID
+    reason: string;                  // "Unavailable", "Client request", etc.
+    reassignedAt: Timestamp;
+  }>;
 }
 
 const contractsCollection = collection(db, 'contracts');
