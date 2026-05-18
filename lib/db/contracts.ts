@@ -23,7 +23,7 @@ export interface Contract {
   startDate: string;
   endDate: string;
   frequency: string;
-  hourlyRate: string;
+  hourlyRate?: string;
   status: 'active' | 'completed' | 'cancelled' | 'paused';
   jobsCompleted: number;
   notes?: string;
@@ -31,6 +31,18 @@ export interface Contract {
   onboardingStatus: 'pending' | 'completed';
   createdAt: Timestamp;
   updatedAt?: Timestamp;
+
+  // --- Financial tracking fields ---
+  chargeRate?: number;              // hourly rate billed to client
+  subcontractorRate?: number;       // hourly rate paid to subcontractor
+  estimatedHoursPerVisit?: number;  // estimated hours per cleaning visit
+  visitsPerMonth?: number;          // number of visits per month
+  overheadPercent?: number;         // admin overhead percentage (default 10)
+
+  // --- Actual tracking (updated as jobs complete) ---
+  totalHoursCompleted?: number;     // sum of all completed job durations
+  actualRevenue?: number;           // total revenue earned
+  actualSubcontractorCost?: number; // total paid to subcontractor
 }
 
 const contractsCollection = collection(db, 'contracts');

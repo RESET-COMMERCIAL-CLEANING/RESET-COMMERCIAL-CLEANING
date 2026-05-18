@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw, Users, User, Plus, Send, Search, Calendar } from 'lucide-react';
+import { Bell, MessageSquare, CheckCircle, Clock, AlertCircle, X, Eye, CheckCircle2, RotateCcw, Users, User, Plus, Send, Search, Calendar, TrendingUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
@@ -17,6 +17,7 @@ import UserManagement from '@/components/UserManagement';
 import SupportTeamManagement from '@/components/SupportTeamManagement';
 import ContractManagement from '@/components/ContractManagement';
 import Onboarding from '@/components/Onboarding';
+import ProfitAnalysis from '@/components/ProfitAnalysis';
 
 interface TicketComment {
   id: string;
@@ -65,7 +66,7 @@ export default function AdminPortal() {
   const [responseText, setResponseText] = useState('');
   const [filter, setFilter] = useState<'all' | 'unassigned' | 'assigned' | 'resolved' | 'archived' | 'deleted'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team' | 'contracts' | 'onboarding'>('tickets');
+  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team' | 'contracts' | 'contract-assignment' | 'profit-analysis'>('tickets');
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [assignToName, setAssignToName] = useState('');
@@ -471,15 +472,26 @@ export default function AdminPortal() {
             Contracts & Schedules
           </button>
           <button
-            onClick={() => setActiveTab('onboarding')}
+            onClick={() => setActiveTab('contract-assignment')}
             className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${
-              activeTab === 'onboarding'
+              activeTab === 'contract-assignment'
                 ? 'bg-reset-green text-black'
                 : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/30'
             }`}
           >
             <Plus size={18} />
-            Onboarding
+            Contract Assignment
+          </button>
+          <button
+            onClick={() => setActiveTab('profit-analysis')}
+            className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'profit-analysis'
+                ? 'bg-reset-green text-black'
+                : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/30'
+            }`}
+          >
+            <TrendingUp size={18} />
+            P&L Analysis
           </button>
         </div>
 
@@ -1350,8 +1362,12 @@ export default function AdminPortal() {
           <ContractManagement />
         )}
 
-        {activeTab === 'onboarding' && (
+        {activeTab === 'contract-assignment' && (
           <Onboarding />
+        )}
+
+        {activeTab === 'profit-analysis' && (
+          <ProfitAnalysis />
         )}
       </div>
       </div>

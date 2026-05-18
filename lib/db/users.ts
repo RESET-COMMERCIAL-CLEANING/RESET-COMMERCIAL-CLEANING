@@ -37,6 +37,38 @@ export interface UserProfile {
   password?: string;
   passwordChangedAt?: Timestamp;
   requiresPasswordChange?: boolean;
+
+  // --- Client/Business Owner specific onboarding ---
+  propertyType?: 'office' | 'warehouse' | 'retail' | 'medical' | 'restaurant' | 'school' | 'other';
+  propertyFloors?: number;
+  companySize?: 'micro' | 'small' | 'medium' | 'large';
+  cleaningFrequency?: 'daily' | 'twice-weekly' | 'weekly' | 'bi-weekly' | 'monthly' | 'one-time';
+  preferredTime?: 'early-morning' | 'business-hours' | 'evening' | 'weekend';
+  serviceTypes?: string;
+  specialRequirements?: string;
+  focusAreas?: string;
+  estimatedBudget?: string;
+  billingPreference?: 'per-service' | 'monthly' | 'quarterly';
+  primaryContactName?: string;
+  primaryContactPhone?: string;
+  accessRequirements?: string;
+
+  // --- Subcontractor specific onboarding ---
+  suburb?: string;
+  serviceAreaKm?: number;
+  preferredShifts?: string;
+  specializations?: string;
+  equipmentOwned?: string;
+  abn?: string;
+  hasPublicLiability?: boolean;
+  liabilityInsuranceExpiry?: string;
+  liabilityPolicyNumber?: string;
+  hasPoliceCheck?: boolean;
+  policeCheckExpiry?: string;
+  baseHourlyRate?: number;
+  weeklyAvailableHours?: number;
+  references?: string;
+  ecoFriendlyCapable?: boolean;
 }
 
 const usersCollection = collection(db, 'users');
