@@ -3,28 +3,74 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { subscribeToAllContracts, Contract } from '@/lib/db/contracts';
+import { subscribeToAllUsers, UserProfile } from '@/lib/db/users';
 import { TrendingUp, DollarSign, Users, Zap } from 'lucide-react';
+
+const PROPERTY_TYPE_RATES: Record<string, number> = {
+  office: 75,
+  warehouse: 65,
+  retail: 70,
+  medical: 90,
+  restaurant: 80,
+  school: 62,
+  other: 70,
+};
+
+const FREQUENCY_VISITS: Record<string, number> = {
+  daily: 22,
+  'twice-weekly': 8,
+  weekly: 4,
+  'bi-weekly': 2,
+  monthly: 1,
+  'one-time': 0.5,
+};
 
 export default function ProfitAnalysis() {
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
 
   useEffect(() => {
-    const unsub = subscribeToAllContracts((allContracts) => {
-      setContracts(allContracts);
-      if (!selectedContract && allContracts.length > 0) {
-        setSelectedContract(allContracts[0]);
+    const unsub1 = subscribeToAllContracts((allContracts) => {
+      const activeContracts = allContracts.filter(c => c.status === 'active');
+      setContracts(activeContracts);
+      if (!selectedContract && activeContracts.length > 0) {
+        setSelectedContract(activeContracts[0]);
       }
     });
-    return () => unsub();
-  }, [selectedContract]);
+    const unsub2 = subscribeToAllUsers(setUsers);
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, []);
+
+  const getClientProfile = (clientId: string): UserProfile | null => {
+    return users.find(u => u.id === clientId) || null;
+  };
+
+  const getSubcontractorProfile = (subId: string): UserProfile | null => {
+    return users.find(u => u.id === subId) || null;
+  };
 
   const calculateMonthly = (contract: Contract) => {
-    const chargeRate = contract.chargeRate || 0;
-    const subRate = contract.subcontractorRate || 0;
-    const hoursPerVisit = contract.estimatedHoursPerVisit || 0;
-    const visitsPerMonth = contract.visitsPerMonth || 0;
-    const overheadPct = contract.overheadPercent || 0;
+    const clientProfile = getClientProfile(contract.clientId);
+    const subProfile = getSubcontractorProfile(contract.subcontractorId);
+
+    // Charge rate: from contract, or based on property type
+    const chargeRate = contract.chargeRate || PROPERTY_TYPE_RATES[clientProfile?.propertyType || 'other'] || 70;
+
+    // Sub rate: from contract, or from subcontractor's baseHourlyRate
+    const subRate = contract.subcontractorRate || subProfile?.baseHourlyRate || 0;
+
+    // Hours per visit: from contract, or 3 as default
+    const hoursPerVisit = contract.estimatedHoursPerVisit || 3;
+
+    // Visits per month: from contract, or based on cleaning frequency
+    const visitsPerMonth = contract.visitsPerMonth || FREQUENCY_VISITS[clientProfile?.cleaningFrequency || 'weekly'] || 4;
+
+    // Overhead percent
+    const overheadPct = contract.overheadPercent || 10;
 
     const monthlyRevenue = chargeRate * hoursPerVisit * visitsPerMonth;
     const monthlySubCost = subRate * hoursPerVisit * visitsPerMonth;
@@ -32,7 +78,7 @@ export default function ProfitAnalysis() {
     const grossProfit = monthlyRevenue - monthlySubCost;
     const netProfit = grossProfit - overhead;
 
-    return { monthlyRevenue, monthlySubCost, overhead, grossProfit, netProfit };
+    return { monthlyRevenue, monthlySubCost, overhead, grossProfit, netProfit, chargeRate, subRate, hoursPerVisit, visitsPerMonth };
   };
 
   const calculateContractTotal = (contract: Contract) => {

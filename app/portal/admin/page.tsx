@@ -16,7 +16,7 @@ import { logTicketResponse, logTicketAssignment, logEmailSent, logTicketResoluti
 import UserManagement from '@/components/UserManagement';
 import SupportTeamManagement from '@/components/SupportTeamManagement';
 import ContractManagement from '@/components/ContractManagement';
-import Onboarding from '@/components/Onboarding';
+import Schedule from '@/components/Schedule';
 import ProfitAnalysis from '@/components/ProfitAnalysis';
 
 interface TicketComment {
@@ -66,7 +66,7 @@ export default function AdminPortal() {
   const [responseText, setResponseText] = useState('');
   const [filter, setFilter] = useState<'all' | 'unassigned' | 'assigned' | 'resolved' | 'archived' | 'deleted'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team' | 'contracts' | 'contract-assignment' | 'profit-analysis'>('tickets');
+  const [activeTab, setActiveTab] = useState<'tickets' | 'users' | 'superusers' | 'support-team' | 'contracts' | 'schedule' | 'profit-analysis'>('tickets');
   const [uploadedFiles, setUploadedFiles] = useState<Attachment[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [assignToName, setAssignToName] = useState('');
@@ -469,18 +469,18 @@ export default function AdminPortal() {
             }`}
           >
             <Calendar size={18} />
-            Contracts & Schedules
+            Contracts
           </button>
           <button
-            onClick={() => setActiveTab('contract-assignment')}
+            onClick={() => setActiveTab('schedule')}
             className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${
-              activeTab === 'contract-assignment'
+              activeTab === 'schedule'
                 ? 'bg-reset-green text-black'
                 : 'bg-reset-green/20 text-reset-green hover:bg-reset-green/30'
             }`}
           >
-            <Plus size={18} />
-            Contract Assignment
+            <Calendar size={18} />
+            Schedule
           </button>
           <button
             onClick={() => setActiveTab('profit-analysis')}
@@ -1362,8 +1362,8 @@ export default function AdminPortal() {
           <ContractManagement />
         )}
 
-        {activeTab === 'contract-assignment' && (
-          <Onboarding />
+        {activeTab === 'schedule' && (
+          <Schedule />
         )}
 
         {activeTab === 'profit-analysis' && (

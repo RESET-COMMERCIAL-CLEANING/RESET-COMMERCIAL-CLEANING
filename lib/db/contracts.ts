@@ -24,13 +24,15 @@ export interface Contract {
   endDate: string;
   frequency: string;
   hourlyRate?: string;
-  status: 'active' | 'completed' | 'cancelled' | 'paused';
+  status: 'active' | 'completed' | 'cancelled' | 'paused' | 'ended';
   jobsCompleted: number;
   notes?: string;
   signedPdfUrl?: string;
   onboardingStatus: 'pending' | 'completed';
   createdAt: Timestamp;
   updatedAt?: Timestamp;
+  archivedAt?: Timestamp;
+  endedReason?: string;
 
   // --- Financial tracking fields ---
   chargeRate?: number;              // hourly rate billed to client
