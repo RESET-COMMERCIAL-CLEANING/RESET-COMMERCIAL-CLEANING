@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowRight, Building2, Users, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
@@ -8,13 +8,14 @@ import { useRouter } from 'next/navigation';
 import { Toast, useToast } from '@/components/Toast';
 import { loginUser } from '@/lib/auth';
 import PasswordChange from '@/components/PasswordChange';
+import { PasswordReset } from '@/components/PasswordReset';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function LoginPage() {
   const router = useRouter();
   const { toasts, addToast, removeToast } = useToast();
-  const [step, setStep] = useState<'role' | 'email' | 'password' | 'success' | 'changePassword'>('role');
+  const [step, setStep] = useState<'role' | 'email' | 'password' | 'success' | 'changePassword' | 'reset'>('role');
   const [role, setRole] = useState<'client' | 'subcontractor' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -311,16 +312,30 @@ export default function LoginPage() {
                       )}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={handleBack}
-                      className="block text-center text-reset-green text-sm font-bold mt-4 hover:underline w-full"
-                    >
-                      ← Back
-                    </button>
+                    <div className="mt-6 flex items-center gap-2 justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setStep('reset')}
+                        className="text-reset-green text-sm font-bold hover:underline"
+                      >
+                        Forgot Password?
+                      </button>
+                      <span className="text-gray-500">|</span>
+                      <button
+                        type="button"
+                        onClick={handleBack}
+                        className="text-reset-green text-sm font-bold hover:underline"
+                      >
+                        Back
+                      </button>
+                    </div>
                   </form>
                 )}
               </>
+            )}
+
+            {step === 'reset' && (
+              <PasswordReset onBack={() => setStep('password')} />
             )}
 
             {step === 'success' && (
