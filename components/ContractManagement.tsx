@@ -7,6 +7,13 @@ import { subscribeToContractsByType, Contract } from '@/lib/db/contracts';
 import { Toast, useToast } from '@/components/Toast';
 import EnhancedContractApprovalPanel from '@/components/EnhancedContractApprovalPanel';
 
+import { getSubcontractorsForContractAssignment } from '@/lib/db/subcontractors';
+
+interface SubcontractorOption {
+  id: string;
+  name: string;
+}
+
 export default function ContractManagement() {
   const { toasts, addToast, removeToast } = useToast();
   const [businessOwnerContracts, setBusinessOwnerContracts] = useState<Contract[]>([]);
@@ -15,7 +22,10 @@ export default function ContractManagement() {
   const [activeTab, setActiveTab] = useState<'business-owner' | 'subcontractor'>('business-owner');
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'submitted' | 'under-review' | 'approved' | 'rejected'>('all');
+  const [subcontractors, setSubcontractors] = useState<SubcontractorOption[]>([]);
+  const [isLoadingSubcontractors, setIsLoadingSubcontractors] = useState(false);
 
+  // Load contracts
   useEffect(() => {
     const unsub1 = subscribeToContractsByType('business-owner', setBusinessOwnerContracts);
     const unsub2 = subscribeToContractsByType('subcontractor', setSubcontractorContracts);
@@ -24,6 +34,24 @@ export default function ContractManagement() {
       unsub2();
     };
   }, []);
+
+  // Load subcontractors from database
+  useEffect(() => {
+    const loadSubcontractors = async () => {
+      setIsLoadingSubcontractors(true);
+      try {
+        const subs = await getSubcontractorsForContractAssignment();
+        setSubcontractors(subs);
+      } catch (error) {
+        console.error('Error loading subcontractors:', error);
+        addToast('Failed to load subcontractors', 'error');
+      } finally {
+        setIsLoadingSubcontractors(false);
+      }
+    };
+
+    loadSubcontractors();
+  }, [addToast]);
 
   const contractsToShow = activeTab === 'business-owner' ? businessOwnerContracts : subcontractorContracts;
   const filteredContracts = contractsToShow.filter(c => {
@@ -268,12 +296,7 @@ export default function ContractManagement() {
               setSelectedContract(null);
               addToast('Contract updated successfully!', 'success');
             }}
-            subcontractors={[
-              // TODO: Load actual subcontractors from database
-              { id: 'sc1', name: 'John Smith - Cleaner Pro' },
-              { id: 'sc2', name: 'Sarah Johnson - Elite Cleaning' },
-              { id: 'sc3', name: 'Mike Davis - Quick Clean Services' },
-            ]}
+            subcontractors={subcontractors}
           />
         )}
       </AnimatePresence>
