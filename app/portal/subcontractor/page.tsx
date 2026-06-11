@@ -117,59 +117,11 @@ export default function SubcontractorPortal() {
   };
 
   const [taskUploadStates, setTaskUploadStates] = useState<{ [key: string]: TaskUploadState }>({});
-  const [currentAssignment, setCurrentAssignment] = useState<any>({
-    id: 1,
-    date: 'Today, 10:00 AM - 2:00 PM',
-    client: 'Tech Startup HQ',
-    location: 'Sydney Office - Level 2',
-    type: 'Standard Clean',
-    duration: '4 hours',
-    rate: '$65',
-  });
+  const [currentAssignment, setCurrentAssignment] = useState<any>(null);
   const [acceptedJobs, setAcceptedJobs] = useState<string[]>([]);
-  const [rescheduledOffers, setRescheduledOffers] = useState<number>(3);
+  const [rescheduledOffers, setRescheduledOffers] = useState<number>(0);
   const [interestedJobs, setInterestedJobs] = useState<string[]>([]);
-  const [checklist, setChecklist] = useState<ChecklistItem[]>([
-    {
-      id: 'cl1',
-      task: 'Sweep and vacuum all areas',
-      completed: true,
-      requiresPhotos: true,
-      beforePhoto: '📸',
-      afterPhoto: '📸',
-      comments: 'Removed all debris and dust from carpeted areas. Deep vacuumed all rooms including under furniture.'
-    },
-    {
-      id: 'cl2',
-      task: 'Mop and clean floors',
-      completed: true,
-      requiresPhotos: true,
-      beforePhoto: '📸',
-      afterPhoto: '📸',
-      comments: 'Applied eco-friendly floor cleaner. All hard floors are spotless and shining. No streaks detected.'
-    },
-    {
-      id: 'cl3',
-      task: 'Clean and disinfect surfaces',
-      completed: true,
-      requiresPhotos: true,
-      beforePhoto: '📸',
-      afterPhoto: '📸',
-      comments: 'All surfaces cleaned and disinfected with appropriate cleaning agents.'
-    },
-    {
-      id: 'cl4',
-      task: 'Empty trash and replace liners',
-      completed: false,
-      requiresPhotos: true
-    },
-    {
-      id: 'cl5',
-      task: 'Clean windows and glass',
-      completed: false,
-      requiresPhotos: true
-    },
-  ]);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
 
   const [allFirestoreJobs, setAllFirestoreJobs] = useState<CleaningJob[]>([]);
 

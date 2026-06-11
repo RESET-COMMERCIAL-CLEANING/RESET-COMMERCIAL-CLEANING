@@ -64,17 +64,17 @@ export default function ClientPortal() {
   const [jobs, setJobs] = useState<CleaningJob[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Get user profile from localStorage or use default
+  // Get user profile from localStorage
   const userProfile = getUserProfile();
   const [profile, setProfile] = useState<Profile>({
-    name: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'Sarah Johnson',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-    company: userProfile?.company || 'Tech Startup HQ',
-    email: userProfile?.email || 'admin@techstartuphq.com',
-    phone: userProfile?.phone || '+61 2 9234 5678',
-    address: userProfile?.address || '123 Tech Street, Sydney NSW 2000',
-    industry: userProfile?.industry || 'Technology',
-    squareFeet: userProfile?.squareFeet || '5,000 sqft',
+    name: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : '',
+    avatar: userProfile?.avatarUrl || '',
+    company: userProfile?.company || '',
+    email: userProfile?.email || '',
+    phone: userProfile?.phone || '',
+    address: userProfile?.address || '',
+    industry: userProfile?.industry || '',
+    squareFeet: userProfile?.squareFeet || '',
   });
 
   // Check authentication and set current user
@@ -129,93 +129,45 @@ export default function ClientPortal() {
     router.push('/login');
   };
 
-  // Mock ongoing jobs with comprehensive data
-  const ongoingJobs: OngoingJob[] = [
-    {
-      id: '1',
-      type: 'Deep Cleaning',
-      location: 'Level 2 - Office Area',
-      startDate: 'Mar 12, 2025',
-      estimatedHours: 4,
-      progress: 65,
-      subcontractor: 'Elite Cleaning Crew',
-      photos: [
-        { id: 'p1', date: 'Mar 12, 2025, 10:00 AM', subcontractor: 'Elite Cleaning Crew', image: '📸', rating: 5 },
-        { id: 'p2', date: 'Mar 12, 2025, 1:30 PM', subcontractor: 'Elite Cleaning Crew', image: '📸', rating: 5 },
-      ],
-    },
-    {
-      id: '2',
-      type: 'Floor Polish',
-      location: 'Reception Area',
-      startDate: 'Mar 11, 2025',
-      estimatedHours: 3,
-      progress: 92,
-      subcontractor: 'Pro Services Team',
-      photos: [
-        { id: 'p3', date: 'Mar 11, 2025, 9:00 AM', subcontractor: 'Pro Services Team', image: '📸' },
-        { id: 'p4', date: 'Mar 11, 2025, 11:30 AM', subcontractor: 'Pro Services Team', image: '📸' },
-        { id: 'p5', date: 'Mar 11, 2025, 2:00 PM', subcontractor: 'Pro Services Team', image: '📸' },
-      ],
-    },
-  ];
+  // Ongoing jobs derived from Firestore data
+  const ongoingJobs: OngoingJob[] = jobs
+    .filter(j => j.status === 'assigned' || j.status === 'in-progress')
+    .map(j => ({
+      id: j.id,
+      type: j.type,
+      location: j.location,
+      startDate: j.scheduledDate instanceof Timestamp ? j.scheduledDate.toDate().toLocaleDateString('en-AU') : new Date(j.scheduledDate).toLocaleDateString('en-AU'),
+      estimatedHours: j.duration,
+      progress: j.status === 'in-progress' ? 50 : 0,
+      subcontractor: j.subcontractorName || 'Assigned Team',
+      photos: [],
+    }));
 
-  // Mock completed jobs with ratings
-  const completedJobs = [
-    { id: 'c1', date: 'Mar 5, 2025', type: 'Standard Cleaning', location: 'Level 3', rating: 4.8, ratingCount: 1 },
-    { id: 'c2', date: 'Mar 1, 2025', type: 'Deep Cleaning', location: 'Lobby', rating: 5, ratingCount: 1 },
-    { id: 'c3', date: 'Feb 24, 2025', type: 'Carpet Cleaning', location: 'Conference Room', rating: 4.5, ratingCount: 1 },
-  ];
+  // Completed jobs derived from Firestore data
+  const completedJobs = jobs
+    .filter(j => j.status === 'completed')
+    .map(j => ({
+      id: j.id,
+      date: j.scheduledDate instanceof Timestamp ? j.scheduledDate.toDate().toLocaleDateString('en-AU') : new Date(j.scheduledDate).toLocaleDateString('en-AU'),
+      type: j.type,
+      location: j.location,
+      rating: 0,
+      ratingCount: 0,
+    }));
 
-  // Mock monthly reports
-  const monthlyReports = [
-    {
-      month: 'March 2025',
-      filename: 'RESET-Report-Mar-2025.pdf',
-      jobsCompleted: 8,
-      totalSpent: '$2,100',
-      averageRating: 4.8,
-      cleaningEfficiency: '94%',
-      highlights: '3 deep cleanings, 5 standard cleanings',
-      costPerSqFt: '$0.42',
-    },
-    {
-      month: 'February 2025',
-      filename: 'RESET-Report-Feb-2025.pdf',
-      jobsCompleted: 9,
-      totalSpent: '$2,250',
-      averageRating: 4.7,
-      cleaningEfficiency: '91%',
-      highlights: '2 floor polishes, 7 standard cleanings',
-      costPerSqFt: '$0.45',
-    },
-    {
-      month: 'January 2025',
-      filename: 'RESET-Report-Jan-2025.pdf',
-      jobsCompleted: 7,
-      totalSpent: '$1,900',
-      averageRating: 4.6,
-      cleaningEfficiency: '89%',
-      highlights: '1 deep cleaning, 6 standard cleanings',
-      costPerSqFt: '$0.38',
-    },
-  ];
+  // Monthly reports - placeholder for future implementation
+  const monthlyReports = [];
 
+  // Stats from real data
   const stats = [
-    { label: 'Total Spent', value: '$6,250', icon: TrendingUp },
-    { label: 'Jobs Completed', value: '24', icon: CheckCircle },
-    { label: 'Avg Rating', value: '4.8/5', icon: Star },
+    { label: 'Total Spent', value: jobs.length > 0 ? `$${jobs.reduce((sum, j) => sum + (j.rate || 0), 0)}` : '$0', icon: TrendingUp },
+    { label: 'Jobs Completed', value: completedJobs.length.toString(), icon: CheckCircle },
+    { label: 'Avg Rating', value: '0.0/5', icon: Star },
     { label: 'Member Since', value: 'Jan 2025', icon: Calendar },
   ];
 
-  // Before & After Gallery - 30 day retention
-  const beforeAfterGallery: BeforeAfterEntry[] = [
-    { id: 'ba1', date: 'Mar 5, 2025', location: 'Level 3 - Open Office', daysRemaining: 25, before: '📸', after: '📸' },
-    { id: 'ba2', date: 'Mar 1, 2025', location: 'Lobby Area', daysRemaining: 29, before: '📸', after: '📸' },
-    { id: 'ba3', date: 'Feb 24, 2025', location: 'Conference Room', daysRemaining: 30, before: '📸', after: '📸' },
-    { id: 'ba4', date: 'Feb 18, 2025', location: 'Executive Office', daysRemaining: 26, before: '📸', after: '📸' },
-    { id: 'ba5', date: 'Feb 12, 2025', location: 'Break Room', daysRemaining: 20, before: '📸', after: '📸' },
-  ];
+  // Before & After Gallery - derived from Firestore data
+  const beforeAfterGallery: BeforeAfterEntry[] = [];
 
   const handleSaveProfile = () => {
     setProfile(editProfile);
@@ -267,8 +219,8 @@ export default function ClientPortal() {
           className="flex items-center justify-between mb-12"
         >
           <div>
-            <h1 className="text-5xl font-bold text-white mb-2">Welcome Back, {profile.name}</h1>
-            <p className="text-gray-400">{profile.company} - Member since January 2025</p>
+            <h1 className="text-5xl font-bold text-white mb-2">Welcome Back, {profile.name || 'User'}</h1>
+            <p className="text-gray-400">{profile.company || 'RESET Business'} - Member since January 2025</p>
           </div>
 
           <motion.div
@@ -428,134 +380,138 @@ export default function ClientPortal() {
             </motion.div>
 
             {/* Before & After Gallery - 30 Day Archive */}
-            <motion.div
-              id="gallery-section"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              viewport={{ once: true }}
-              className="p-6 lg:p-8 rounded-xl glass"
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-3">
-                <h2 className="text-xl lg:text-2xl font-bold text-white flex items-center gap-2">
-                  <Camera className="w-5 h-5 lg:w-6 lg:h-6 text-reset-green" />
-                  Before & After Gallery
-                </h2>
-                <div className="text-xs bg-reset-green/20 text-reset-green px-3 py-1 rounded-full w-fit">
-                  30 Day Archive
+            {beforeAfterGallery.length > 0 && (
+              <motion.div
+                id="gallery-section"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                viewport={{ once: true }}
+                className="p-6 lg:p-8 rounded-xl glass"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-3">
+                  <h2 className="text-xl lg:text-2xl font-bold text-white flex items-center gap-2">
+                    <Camera className="w-5 h-5 lg:w-6 lg:h-6 text-reset-green" />
+                    Before & After Gallery
+                  </h2>
+                  <div className="text-xs bg-reset-green/20 text-reset-green px-3 py-1 rounded-full w-fit">
+                    30 Day Archive
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-4">
-                {beforeAfterGallery.map((entry) => (
-                  <motion.div
-                    key={entry.id}
-                    whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.05)' }}
-                    className="p-4 border border-reset-green/20 rounded-lg transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="font-bold text-white mb-1">{entry.location}</h3>
-                        <p className="text-sm text-gray-400">{entry.date}</p>
+                <div className="space-y-4">
+                  {beforeAfterGallery.map((entry) => (
+                    <motion.div
+                      key={entry.id}
+                      whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.05)' }}
+                      className="p-4 border border-reset-green/20 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="font-bold text-white mb-1">{entry.location}</h3>
+                          <p className="text-sm text-gray-400">{entry.date}</p>
+                        </div>
+                        <div className={`text-xs px-3 py-1 rounded-full ${
+                          entry.daysRemaining > 7
+                            ? 'bg-reset-green/20 text-reset-green'
+                            : 'bg-orange-500/20 text-orange-400'
+                        }`}>
+                          {entry.daysRemaining} days remaining
+                        </div>
                       </div>
-                      <div className={`text-xs px-3 py-1 rounded-full ${
-                        entry.daysRemaining > 7
-                          ? 'bg-reset-green/20 text-reset-green'
-                          : 'bg-orange-500/20 text-orange-400'
-                      }`}>
-                        {entry.daysRemaining} days remaining
-                      </div>
-                    </div>
 
-                    {/* Before & After Images */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-gray-400 mb-2">BEFORE</p>
-                        <div className="aspect-square bg-gradient-to-br from-red-500/20 to-red-600/10 rounded-lg flex items-center justify-center cursor-pointer hover:from-red-500/30 transition-colors group relative">
-                          <span className="text-4xl">{entry.before}</span>
-                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/50 rounded-lg flex items-center justify-center transition-opacity text-xs text-gray-300 font-bold">
-                            View Full Size
+                      {/* Before & After Images */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs font-bold text-gray-400 mb-2">BEFORE</p>
+                          <div className="aspect-square bg-gradient-to-br from-red-500/20 to-red-600/10 rounded-lg flex items-center justify-center cursor-pointer hover:from-red-500/30 transition-colors group relative">
+                            <span className="text-4xl">{entry.before}</span>
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/50 rounded-lg flex items-center justify-center transition-opacity text-xs text-gray-300 font-bold">
+                              View Full Size
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-400 mb-2">AFTER</p>
+                          <div className="aspect-square bg-gradient-to-br from-reset-green/20 to-reset-green/10 rounded-lg flex items-center justify-center cursor-pointer hover:from-reset-green/30 transition-colors group relative">
+                            <span className="text-4xl">{entry.after}</span>
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/50 rounded-lg flex items-center justify-center transition-opacity text-xs text-gray-300 font-bold">
+                              View Full Size
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-400 mb-2">AFTER</p>
-                        <div className="aspect-square bg-gradient-to-br from-reset-green/20 to-reset-green/10 rounded-lg flex items-center justify-center cursor-pointer hover:from-reset-green/30 transition-colors group relative">
-                          <span className="text-4xl">{entry.after}</span>
-                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/50 rounded-lg flex items-center justify-center transition-opacity text-xs text-gray-300 font-bold">
-                            View Full Size
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-              <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <p className="text-xs text-blue-300">
-                  ℹ️ Before & After photos are archived for 30 days. After this period, they will be automatically removed to protect your privacy and storage space.
-                </p>
-              </div>
-            </motion.div>
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-xs text-blue-300">
+                    ℹ️ Before & After photos are archived for 30 days. After this period, they will be automatically removed to protect your privacy and storage space.
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Monthly Reports */}
-            <motion.div
-              id="reports-section"
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              viewport={{ once: true }}
-              className="p-6 rounded-xl glass"
-            >
-              <h3 className="text-base lg:text-lg font-bold text-white mb-4">Monthly Reports</h3>
-              <div className="space-y-3">
-                {monthlyReports.map((report, i) => (
-                  <motion.div
-                    key={i}
-                    whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.1)' }}
-                    className="p-4 rounded border border-reset-green/20 hover:border-reset-green/50 transition-colors cursor-pointer"
-                  >
-                    <div className="mb-3">
-                      <p className="font-bold text-white text-sm mb-2">{report.month}</p>
-                      <div className="space-y-1 text-xs text-gray-400">
-                        <div className="flex justify-between">
-                          <span>Jobs Completed:</span>
-                          <span className="text-reset-green font-bold">{report.jobsCompleted}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Total Spent:</span>
-                          <span className="text-reset-green font-bold">{report.totalSpent}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Avg Rating:</span>
-                          <span className="text-reset-green font-bold">⭐ {report.averageRating}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Efficiency:</span>
-                          <span className="text-reset-green font-bold">{report.cleaningEfficiency}</span>
+            {monthlyReports.length > 0 && (
+              <motion.div
+                id="reports-section"
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                viewport={{ once: true }}
+                className="p-6 rounded-xl glass"
+              >
+                <h3 className="text-base lg:text-lg font-bold text-white mb-4">Monthly Reports</h3>
+                <div className="space-y-3">
+                  {monthlyReports.map((report, i) => (
+                    <motion.div
+                      key={i}
+                      whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.1)' }}
+                      className="p-4 rounded border border-reset-green/20 hover:border-reset-green/50 transition-colors cursor-pointer"
+                    >
+                      <div className="mb-3">
+                        <p className="font-bold text-white text-sm mb-2">{report.month}</p>
+                        <div className="space-y-1 text-xs text-gray-400">
+                          <div className="flex justify-between">
+                            <span>Jobs Completed:</span>
+                            <span className="text-reset-green font-bold">{report.jobsCompleted}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Total Spent:</span>
+                            <span className="text-reset-green font-bold">{report.totalSpent}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Avg Rating:</span>
+                            <span className="text-reset-green font-bold">⭐ {report.averageRating}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Efficiency:</span>
+                            <span className="text-reset-green font-bold">{report.cleaningEfficiency}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        try {
-                          generateMonthlyReportPDF(report, profile);
-                          addNotification(`${report.filename} downloaded successfully!`, 'success');
-                        } catch (error) {
-                          addNotification(`Failed to download report. Please try again.`, 'error');
-                        }
-                      }}
-                      className="w-full py-2 text-xs bg-reset-green/20 text-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold flex items-center justify-center gap-2"
-                    >
-                      <Download size={14} />
-                      Download Report
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
+                      <button
+                        onClick={() => {
+                          try {
+                            generateMonthlyReportPDF(report, profile);
+                            addNotification(`${report.filename} downloaded successfully!`, 'success');
+                          } catch (error) {
+                            addNotification(`Failed to download report. Please try again.`, 'error');
+                          }
+                        }}
+                        className="w-full py-2 text-xs bg-reset-green/20 text-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold flex items-center justify-center gap-2"
+                      >
+                        <Download size={14} />
+                        Download Report
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
             {/* Contracts */}
             <motion.div
