@@ -5,7 +5,7 @@ import { Search, Building2, Users, AlertCircle, CheckCircle, Clock, XCircle } fr
 import { useState, useEffect } from 'react';
 import { subscribeToContractsByType, Contract } from '@/lib/db/contracts';
 import { Toast, useToast } from '@/components/Toast';
-import ContractApprovalPanel from '@/components/ContractApprovalPanel';
+import EnhancedContractApprovalPanel from '@/components/EnhancedContractApprovalPanel';
 
 export default function ContractManagement() {
   const { toasts, addToast, removeToast } = useToast();
@@ -258,16 +258,22 @@ export default function ContractManagement() {
         </div>
       </div>
 
-      {/* Contract Approval Panel */}
+      {/* Enhanced Contract Approval Panel */}
       <AnimatePresence>
         {selectedContract && (
-          <ContractApprovalPanel
+          <EnhancedContractApprovalPanel
             contract={selectedContract}
             onClose={() => setSelectedContract(null)}
             onApproval={() => {
               setSelectedContract(null);
               addToast('Contract updated successfully!', 'success');
             }}
+            subcontractors={[
+              // TODO: Load actual subcontractors from database
+              { id: 'sc1', name: 'John Smith - Cleaner Pro' },
+              { id: 'sc2', name: 'Sarah Johnson - Elite Cleaning' },
+              { id: 'sc3', name: 'Mike Davis - Quick Clean Services' },
+            ]}
           />
         )}
       </AnimatePresence>
