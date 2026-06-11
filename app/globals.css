@@ -33,18 +33,6 @@ body {
   border: 1px solid rgba(58, 158, 104, 0.2);
 }
 
-/* Sage glow effect */
-.glow-green {
-  box-shadow: 0 0 20px rgba(58, 158, 104, 0.25),
-              0 0 40px rgba(58, 158, 104, 0.15);
-}
-
-.glow-green-hover:hover {
-  box-shadow: 0 0 30px rgba(58, 158, 104, 0.4),
-              0 0 60px rgba(58, 158, 104, 0.25);
-  transition: box-shadow 0.3s ease;
-}
-
 /* Gradient text */
 .gradient-text {
   background: linear-gradient(135deg, #7cff4f 0%, #ffffff 100%);
@@ -84,15 +72,6 @@ body {
   }
   50% {
     transform: translateY(-20px);
-  }
-}
-
-@keyframes glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(124, 255, 79, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(124, 255, 79, 0.6);
   }
 }
 

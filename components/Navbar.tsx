@@ -230,23 +230,6 @@ export function Navbar() {
           />
         </Link>
 
-        {/* Portal Navigation Links - Show only in portal pages */}
-        {isPortalPage && !isSupportLogin && (
-          <div className="hidden lg:flex items-center gap-8 text-sm">
-            <a href="/portal/admin" className="text-gray-300 hover:text-reset-green transition-colors">
-              Admin Portal
-            </a>
-            <a href="/portal/support-member" className="text-gray-300 hover:text-reset-green transition-colors">
-              Support Team
-            </a>
-            <a href="/login" className="text-gray-300 hover:text-reset-green transition-colors">
-              Client Portal
-            </a>
-            <a href="/login" className="text-gray-300 hover:text-reset-green transition-colors">
-              Subcontractor Portal
-            </a>
-          </div>
-        )}
 
         {/* Desktop Navigation - Hide on portal pages */}
         {!isPortalPage && !isSupportLogin && (
