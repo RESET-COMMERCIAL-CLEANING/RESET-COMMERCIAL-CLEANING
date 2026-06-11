@@ -131,3 +131,89 @@ export const subscribeToJobsBySubcontractor = (
     callback(jobs);
   });
 };
+
+/**
+ * Create a job from a contract assignment
+ * Automatically generates checklist based on contract type
+ */
+export const createJobFromContractAssignment = async (data: Omit<CleaningJob, 'id' | 'createdAt' | 'checklist'>, generatedChecklist: ChecklistItem[]): Promise<CleaningJob> => {
+  const jobRef = doc(jobsCollection);
+  const newJob: CleaningJob = {
+    ...data,
+    id: jobRef.id,
+    checklist: generatedChecklist,
+    createdAt: Timestamp.now(),
+  };
+  await setDoc(jobRef, newJob);
+  return newJob;
+};
+
+/**
+ * Reassign a job to a different subcontractor
+ * Continues the same job but updates assignee and tracks in history
+ */
+export const reassignJob = async (
+  jobId: string,
+  newSubcontractorId: string,
+  newSubcontractorName: string,
+  reason: string
+): Promise<void> => {
+  const job = await getJob(jobId);
+  if (!job) throw new Error('Job not found');
+
+  const newAssignment = {
+    from: job.subcontractorId,
+    to: newSubcontractorId,
+    reason,
+    reassignedAt: Timestamp.now(),
+  };
+
+  await updateJob(jobId, {
+    subcontractorId: newSubcontractorId,
+    subcontractorName: newSubcontractorName,
+    reassignmentHistory: [...(job.reassignmentHistory || []), newAssignment],
+  });
+};
+
+/**
+ * Get jobs by contract ID
+ */
+export const getJobsByContract = async (contractId: string): Promise<CleaningJob[]> => {
+  const q = query(jobsCollection, where('contractId', '==', contractId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    ...doc.data() as CleaningJob,
+    id: doc.id,
+  }));
+};
+
+/**
+ * Get assignment history for a job (from all reassignments)
+ */
+export const getJobAssignmentHistory = async (jobId: string): Promise<{ name: string; startDate: Timestamp; endDate?: Timestamp }[]> => {
+  const job = await getJob(jobId);
+  if (!job) return [];
+
+  const history: { name: string; startDate: Timestamp; endDate?: Timestamp }[] = [
+    {
+      name: job.subcontractorName || 'Unknown',
+      startDate: job.createdAt,
+    },
+  ];
+
+  if (job.reassignmentHistory) {
+    job.reassignmentHistory.forEach((reassignment, idx) => {
+      // End the previous assignment when this one started
+      if (history.length > 0) {
+        history[history.length - 1].endDate = reassignment.reassignedAt;
+      }
+      // Start the new assignment
+      history.push({
+        name: reassignment.to,
+        startDate: reassignment.reassignedAt,
+      });
+    });
+  }
+
+  return history;
+};
