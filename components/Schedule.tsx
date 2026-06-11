@@ -1,61 +1,72 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Calendar, Clock, AlertCircle, CheckCircle, Filter, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, CheckCircle, Filter, AlertTriangle, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Timestamp } from 'firebase/firestore';
-import { subscribeToAllContracts, updateContract, Contract } from '@/lib/db/contracts';
 import { subscribeToJobs, updateJob, CleaningJob } from '@/lib/db/jobs';
+import { subscribeToContractsByType, Contract } from '@/lib/db/contracts';
 import { subscribeToTickets, SupportTicket } from '@/lib/db/tickets';
 import { subscribeToAllUsers, UserProfile } from '@/lib/db/users';
 import { Toast, useToast } from '@/components/Toast';
 
 export default function Schedule() {
   const { toasts, addToast, removeToast } = useToast();
-  const [contracts, setContracts] = useState<Contract[]>([]);
   const [jobs, setJobs] = useState<CleaningJob[]>([]);
+  const [businessOwnerContracts, setBusinessOwnerContracts] = useState<Contract[]>([]);
+  const [subcontractorContracts, setSubcontractorContracts] = useState<Contract[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
 
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
-  const [filterSubcontractor, setFilterSubcontractor] = useState<string>('all');
-  const [rescheduleJobId, setRescheduleJobId] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<CleaningJob | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>('assigned');
   const [rescheduleDate, setRescheduleDate] = useState('');
+  const [reassignSubId, setReassignSubId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const unsub1 = subscribeToAllContracts((data) => setContracts(data));
-    const unsub2 = subscribeToJobs((data) => setJobs(data));
-    const unsub3 = subscribeToTickets((data) => setTickets(data));
-    const unsub4 = subscribeToAllUsers((data) => setUsers(data));
+    const unsub1 = subscribeToJobs(setJobs);
+    const unsub2 = subscribeToContractsByType('business-owner', setBusinessOwnerContracts);
+    const unsub3 = subscribeToContractsByType('subcontractor', setSubcontractorContracts);
+    const unsub4 = subscribeToTickets(setTickets);
+    const unsub5 = subscribeToAllUsers(setUsers);
 
     return () => {
       unsub1();
       unsub2();
       unsub3();
       unsub4();
+      unsub5();
     };
   }, []);
 
-  const activeContracts = contracts.filter(c => c.status === 'active');
+  const getClientName = (contractId: string): string => {
+    const contract = businessOwnerContracts.find(c => c.userId === contractId);
+    return contract?.company || 'Unknown Client';
+  };
 
-  const filteredContracts = filterSubcontractor === 'all'
-    ? activeContracts
-    : activeContracts.filter(c => c.subcontractorId === filterSubcontractor);
+  const getSubcontractorName = (userId: string): string => {
+    const contract = subcontractorContracts.find(c => c.userId === userId);
+    if (!contract) return 'Unknown';
+    return `${contract.firstName} ${contract.lastName}`.trim();
+  };
 
-  const associatedJobs = selectedContract
-    ? jobs.filter(j => j.contractId === selectedContract.id)
-    : [];
+  // Filter jobs by status
+  const filteredJobs = filterStatus === 'all'
+    ? jobs
+    : jobs.filter(j => j.status === filterStatus);
 
-  const rescheduleTickets = selectedContract
-    ? tickets.filter(t =>
-        t.source === 'reschedule-request' &&
-        t.contractId === selectedContract.id
-      )
-    : [];
+  // Group jobs by client
+  const jobsByClient: Record<string, CleaningJob[]> = {};
+  filteredJobs.forEach(job => {
+    if (!jobsByClient[job.contractId]) {
+      jobsByClient[job.contractId] = [];
+    }
+    jobsByClient[job.contractId].push(job);
+  });
 
   const handleRescheduleJob = async () => {
-    if (!rescheduleJobId || !rescheduleDate) {
+    if (!selectedJob || !rescheduleDate) {
       addToast('Please select a date', 'error');
       return;
     }
@@ -63,14 +74,46 @@ export default function Schedule() {
     setIsSubmitting(true);
     try {
       const newDate = new Date(rescheduleDate);
-      await updateJob(rescheduleJobId, {
+      await updateJob(selectedJob.id, {
         scheduledDate: Timestamp.fromDate(newDate),
       });
-      setRescheduleJobId(null);
       setRescheduleDate('');
       addToast('Job rescheduled successfully', 'success');
     } catch (error) {
       addToast('Failed to reschedule job', 'error');
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReassignJob = async () => {
+    if (!selectedJob || !reassignSubId) {
+      addToast('Please select a subcontractor', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const reassignmentEntry = {
+        from: selectedJob.subcontractorId,
+        to: reassignSubId,
+        reason: 'Admin reassignment',
+        reassignedAt: Timestamp.now(),
+      };
+
+      const updatedHistory = [...(selectedJob.reassignmentHistory || []), reassignmentEntry];
+
+      await updateJob(selectedJob.id, {
+        subcontractorId: reassignSubId,
+        subcontractorName: getSubcontractorName(reassignSubId),
+        reassignmentHistory: updatedHistory,
+      });
+
+      setReassignSubId('');
+      addToast('Job reassigned successfully', 'success');
+    } catch (error) {
+      addToast('Failed to reassign job', 'error');
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -99,12 +142,12 @@ export default function Schedule() {
     switch (status) {
       case 'completed':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'scheduled':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'in-progress':
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'cancelled':
-        return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'assigned':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'available':
+        return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
@@ -132,197 +175,203 @@ export default function Schedule() {
     return workingDays.includes(dayName);
   };
 
+  const availableSubcontractors = subcontractorContracts.filter(
+    c => c.userId !== selectedJob?.subcontractorId && c.status === 'active'
+  );
+
   return (
     <>
       <Toast toasts={toasts} onRemove={removeToast} />
       <div className="p-6 lg:p-8 rounded-xl glass border border-reset-green/30 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Panel: Contract List */}
+        {/* Left Panel: Jobs List */}
         <div className="lg:col-span-1">
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="w-5 h-5 text-reset-green" />
-            <h3 className="text-lg font-bold text-white">Contracts</h3>
+            <h3 className="text-lg font-bold text-white">Jobs</h3>
           </div>
 
-          {/* Filter */}
+          {/* Status Filter */}
           <div className="mb-6">
-            <label className="block text-xs font-bold text-gray-300 mb-2">Filter by Subcontractor</label>
+            <label className="block text-xs font-bold text-gray-300 mb-2">Filter by Status</label>
             <select
-              value={filterSubcontractor}
-              onChange={(e) => setFilterSubcontractor(e.target.value)}
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setSelectedJob(null);
+              }}
               className="w-full px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded text-sm focus:outline-none focus:border-reset-green"
             >
-              <option value="all">All Subcontractors</option>
-              {Array.from(new Set(activeContracts.map(c => c.subcontractorId))).map(subId => {
-                const contract = activeContracts.find(c => c.subcontractorId === subId);
-                return (
-                  <option key={subId} value={subId}>
-                    {contract?.subcontractorName}
-                  </option>
-                );
-              })}
+              <option value="all">All Jobs</option>
+              <option value="assigned">Assigned</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
 
-          {/* Contract List */}
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {filteredContracts.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">No active contracts</p>
+          {/* Jobs by Client */}
+          <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            {Object.keys(jobsByClient).length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-4">No jobs found</p>
             ) : (
-              filteredContracts.map((contract) => (
-                <button
-                  key={contract.id}
-                  onClick={() => setSelectedContract(contract)}
-                  className={`w-full p-4 rounded-lg border transition-all text-left ${
-                    selectedContract?.id === contract.id
-                      ? 'bg-reset-green/20 border-reset-green/50'
-                      : 'bg-gray-900/50 border-gray-700 hover:border-gray-600'
-                  }`}
-                >
-                  <p className="font-bold text-white text-sm">{contract.clientName}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {contract.subcontractorName.split(' ')[0]} • {contract.frequency}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2 text-xs">
-                    <span className={`px-2 py-1 rounded ${getStatusColor(contract.status)}`}>
-                      {contract.status}
-                    </span>
-                    <span className="text-gray-500">{associatedJobs.length} jobs</span>
+              Object.entries(jobsByClient).map(([clientId, clientJobs]) => (
+                <div key={clientId}>
+                  <h4 className="text-xs font-bold text-reset-green mb-2">
+                    {getClientName(clientId)}
+                  </h4>
+                  <div className="space-y-2">
+                    {clientJobs.map((job) => (
+                      <button
+                        key={job.id}
+                        onClick={() => setSelectedJob(job)}
+                        className={`w-full p-3 rounded-lg border transition-all text-left text-sm ${
+                          selectedJob?.id === job.id
+                            ? 'bg-reset-green/20 border-reset-green/50'
+                            : 'bg-gray-900/50 border-gray-700 hover:border-gray-600'
+                        }`}
+                      >
+                        <p className="font-bold text-white truncate">{job.type}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {formatDate(job.scheduledDate)} • {job.duration}h
+                        </p>
+                        <span className={`inline-block text-xs px-2 py-1 rounded mt-2 ${getStatusColor(job.status)}`}>
+                          {job.status}
+                        </span>
+                      </button>
+                    ))}
                   </div>
-                </button>
+                </div>
               ))
             )}
           </div>
         </div>
 
-        {/* Right Panel: Jobs & Reschedule Requests */}
-        {selectedContract ? (
+        {/* Right Panel: Job Details & Actions */}
+        {selectedJob ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="lg:col-span-2 space-y-6"
           >
-            {/* Contract Header */}
+            {/* Job Header */}
             <div className="p-4 bg-white/5 border border-reset-green/20 rounded-lg">
-              <h3 className="text-lg font-bold text-white mb-2">{selectedContract.clientName}</h3>
+              <h3 className="text-lg font-bold text-white mb-2">{selectedJob.type}</h3>
               <p className="text-sm text-gray-400">
-                {selectedContract.subcontractorName} • {selectedContract.frequency} • Started {formatDate(selectedContract.startDate)}
+                {getClientName(selectedJob.contractId)} • {selectedJob.location}
+              </p>
+              <p className="text-sm text-gray-400 mt-1">
+                {formatDate(selectedJob.scheduledDate)} • {selectedJob.duration} hours
               </p>
             </div>
 
-            {/* Jobs List */}
-            <div className="p-6 bg-white/5 border border-reset-green/20 rounded-lg">
-              <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <Clock size={20} />
-                Scheduled Jobs
-              </h4>
-
-              {associatedJobs.length === 0 ? (
-                <p className="text-gray-400 text-center py-6">No jobs scheduled for this contract</p>
-              ) : (
-                <div className="space-y-3">
-                  {associatedJobs.map((job) => {
-                    const isAvailable = checkJobAvailability(job);
-                    const cardColor = !isAvailable && (job.status === 'assigned' || job.status === 'in-progress')
-                      ? 'bg-yellow-600/20 text-yellow-400 border-yellow-600/50'
-                      : getStatusColor(job.status);
-
-                    return (
-                    <div key={job.id} className={`p-4 rounded-lg border ${cardColor}`}>
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-bold text-white">{job.type}</p>
-                          <p className="text-xs opacity-80 mt-1">
-                            {formatDate(job.scheduledDate)} at {job.location}
-                          </p>
-                        </div>
-                        <span className="text-xs px-2 py-1 bg-black/30 rounded">
-                          {job.status}
-                        </span>
-                      </div>
-
-                      {(job.status === 'assigned' || job.status === 'in-progress') && (
-                        <>
-                          {rescheduleJobId === job.id ? (
-                            <div className="mt-3 pt-3 border-t border-current/30 space-y-2">
-                              <input
-                                type="datetime-local"
-                                value={rescheduleDate}
-                                onChange={(e) => setRescheduleDate(e.target.value)}
-                                className="w-full px-3 py-2 bg-black/40 border border-current/50 text-white rounded text-sm focus:outline-none"
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    setRescheduleJobId(null);
-                                    setRescheduleDate('');
-                                  }}
-                                  className="flex-1 px-3 py-1 bg-black/40 hover:bg-black/60 rounded text-xs font-bold transition-colors"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  onClick={handleRescheduleJob}
-                                  disabled={isSubmitting || !rescheduleDate}
-                                  className="flex-1 px-3 py-1 bg-reset-green text-black rounded text-xs font-bold hover:bg-reset-green/80 transition-colors disabled:opacity-50"
-                                >
-                                  {isSubmitting ? 'Saving...' : 'Save'}
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setRescheduleJobId(job.id)}
-                              className="mt-3 px-3 py-1 text-xs font-bold bg-black/40 hover:bg-black/60 rounded transition-colors"
-                            >
-                              Reschedule
-                            </button>
-                          )}
-                        </>
-                      )}
-
-                      {!isAvailable && (job.status === 'assigned' || job.status === 'in-progress') && (
-                        <div className="mt-3 pt-3 border-t border-current/30 flex items-start gap-2 text-xs text-yellow-400">
-                          <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-                          <span>Subcontractor unavailable on this date. Please reschedule or reassign.</span>
-                        </div>
-                      )}
-                    </div>
-                    );
-                  })}
+            {/* Job Details */}
+            <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700 space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-400">Current Subcontractor</p>
+                  <p className="text-white font-semibold">{selectedJob.subcontractorName}</p>
                 </div>
-              )}
+                <div>
+                  <p className="text-gray-400">Status</p>
+                  <p className={`font-semibold ${getStatusColor(selectedJob.status)}`}>
+                    {selectedJob.status}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Duration</p>
+                  <p className="text-white font-semibold">{selectedJob.duration}h</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Rate</p>
+                  <p className="text-white font-semibold">${selectedJob.rate}/hr</p>
+                </div>
+              </div>
             </div>
 
-            {/* Reschedule Requests */}
-            {rescheduleTickets.length > 0 && (
-              <div className="p-6 bg-white/5 border border-yellow-600/30 rounded-lg">
-                <h4 className="text-lg font-bold text-yellow-400 mb-4 flex items-center gap-2">
-                  <AlertCircle size={20} />
-                  Reschedule Requests ({rescheduleTickets.length})
+            {/* Reschedule Job */}
+            {(selectedJob.status === 'assigned' || selectedJob.status === 'in-progress') && (
+              <div className="p-4 bg-blue-900/20 rounded-lg border border-blue-500/30">
+                <h4 className="font-bold text-white mb-3 flex items-center gap-2">
+                  <Clock size={18} />
+                  Reschedule Job
                 </h4>
+                <div className="space-y-2">
+                  <input
+                    type="datetime-local"
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded text-sm focus:outline-none focus:border-blue-400"
+                  />
+                  <button
+                    onClick={handleRescheduleJob}
+                    disabled={isSubmitting || !rescheduleDate}
+                    className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-bold transition-colors disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Saving...' : 'Reschedule'}
+                  </button>
+                </div>
+              </div>
+            )}
 
-                <div className="space-y-3">
-                  {rescheduleTickets.map((ticket) => (
-                    <div key={ticket.id} className="p-4 bg-yellow-900/20 border border-yellow-600/50 rounded-lg">
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="font-bold text-white">{ticket.subject}</p>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          ticket.status === 'resolved'
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-yellow-500/20 text-yellow-400'
-                        }`}>
-                          {ticket.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-400 mb-2">{ticket.message}</p>
-                      <p className="text-xs text-gray-500">
-                        Requested by {ticket.userName} • {formatDateTime(ticket.createdAt as any)}
+            {/* Reassign Subcontractor */}
+            {(selectedJob.status === 'assigned' || selectedJob.status === 'in-progress') && (
+              <div className="p-4 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
+                <h4 className="font-bold text-white mb-3 flex items-center gap-2">
+                  <Users size={18} />
+                  Reassign to Service Provider
+                </h4>
+                <div className="space-y-2">
+                  <select
+                    value={reassignSubId}
+                    onChange={(e) => setReassignSubId(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded text-sm focus:outline-none focus:border-yellow-400"
+                  >
+                    <option value="">Select a service provider...</option>
+                    {availableSubcontractors.map((sub) => (
+                      <option key={sub.userId} value={sub.userId}>
+                        {sub.firstName} {sub.lastName} (${sub.baseHourlyRate}/hr)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleReassignJob}
+                    disabled={isSubmitting || !reassignSubId}
+                    className="w-full px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm font-bold transition-colors disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Reassigning...' : 'Reassign'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Availability Warning */}
+            {!checkJobAvailability(selectedJob) && (
+              <div className="p-4 bg-yellow-900/20 border border-yellow-600/50 rounded-lg flex items-start gap-3">
+                <AlertTriangle size={18} className="flex-shrink-0 text-yellow-400 mt-0.5" />
+                <div>
+                  <p className="font-bold text-yellow-400">Subcontractor Unavailable</p>
+                  <p className="text-sm text-yellow-300 mt-1">
+                    {selectedJob.subcontractorName} is marked unavailable on {formatDate(selectedJob.scheduledDate)}.
+                    Consider rescheduling or reassigning.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Reassignment History */}
+            {selectedJob.reassignmentHistory && selectedJob.reassignmentHistory.length > 0 && (
+              <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                <h4 className="font-bold text-white mb-3">Reassignment History</h4>
+                <div className="space-y-2 text-sm">
+                  {selectedJob.reassignmentHistory.map((entry, idx) => (
+                    <div key={idx} className="p-2 bg-gray-800/50 rounded border border-gray-700">
+                      <p className="text-gray-300">
+                        From: <span className="text-white font-semibold">{entry.from}</span> →{' '}
+                        <span className="text-white font-semibold">{entry.to}</span>
                       </p>
-                      {ticket.requestedDate && (
-                        <p className="text-xs text-yellow-400 mt-2">
-                          Requested date: {formatDate(ticket.requestedDate)}
-                        </p>
-                      )}
+                      <p className="text-xs text-gray-500 mt-1">{entry.reason}</p>
+                      <p className="text-xs text-gray-600">
+                        {formatDateTime(entry.reassignedAt)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -333,7 +382,7 @@ export default function Schedule() {
           <div className="lg:col-span-2 flex items-center justify-center min-h-96">
             <div className="text-center">
               <Calendar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400 text-lg">Select a contract to view and manage schedule</p>
+              <p className="text-gray-400 text-lg">Select a job to view and manage schedule</p>
             </div>
           </div>
         )}

@@ -28,31 +28,29 @@ export interface CleaningJob {
   type: string;
   location: string;
   address: string;
-  clientId: string;
-  clientName: string;
-  subcontractorId?: string;
+  contractId: string;                // which contract/client this job belongs to
+  clientId?: string;                 // client ID (optional, use contractId as source of truth)
+  clientName?: string;
+  subcontractorId: string;           // currently assigned subcontractor
   subcontractorName?: string;
-  contractId?: string;
+  subcontractorRate?: number;        // rate of current subcontractor (captured at job creation/reassignment)
   scheduledDate: Timestamp;
-  duration: number;
+  duration: number;                  // hours
   rate: number;
   status: 'available' | 'assigned' | 'in-progress' | 'completed';
   checklist: ChecklistItem[];
-  rescheduleRequestedAt?: Timestamp;
-  rescheduleTicketId?: string;
   createdAt: Timestamp;
 
-  // --- Reassignment tracking (hybrid availability approach) ---
-  originalAssignedSubId?: string;    // who was originally assigned
-  currentAssignedSubId?: string;     // current assignment (may differ from subcontractorId)
-  rescheduleCount?: number;          // how many times rescheduled
-  rescheduleHistory?: Array<{
+  // --- Reassignment tracking for P&L ---
+  originalAssignedSubId?: string;    // who was originally assigned (audit trail)
+  reassignmentHistory?: Array<{
     from: string;                    // subcontractor ID
-    to?: string;                     // replacement ID (null if just rescheduled)
-    reason: string;                  // from reschedule ticket
-    requestedAt: Timestamp;
-    fulfilledAt?: Timestamp;
+    to: string;                      // replacement subcontractor ID
+    reason: string;                  // "Unavailable", "Client request", etc.
+    reassignedAt: Timestamp;
   }>;
+  completedBySubId?: string;         // which subcontractor actually completed it (for final P&L)
+  completedAt?: Timestamp;           // when it was marked complete
 }
 
 const jobsCollection = collection(db, 'jobs');
@@ -112,6 +110,20 @@ export const updateJobChecklist = async (jobId: string, checklist: ChecklistItem
 
 export const subscribeToJobs = (callback: (jobs: CleaningJob[]) => void) => {
   return onSnapshot(jobsCollection, (querySnapshot) => {
+    const jobs = querySnapshot.docs.map(doc => ({
+      ...doc.data() as CleaningJob,
+      id: doc.id,
+    }));
+    callback(jobs);
+  });
+};
+
+export const subscribeToJobsBySubcontractor = (
+  subcontractorId: string,
+  callback: (jobs: CleaningJob[]) => void
+) => {
+  const q = query(jobsCollection, where('subcontractorId', '==', subcontractorId));
+  return onSnapshot(q, (querySnapshot) => {
     const jobs = querySnapshot.docs.map(doc => ({
       ...doc.data() as CleaningJob,
       id: doc.id,

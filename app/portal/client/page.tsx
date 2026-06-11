@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { Calendar, Bell, Download, MessageSquare, LogOut, User, Phone, Mail, TrendingUp, CheckCircle, X, Star, MapPin, Clock, Camera } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Timestamp } from 'firebase/firestore';
 import { generateMonthlyReportPDF } from '@/lib/pdfGenerator';
 import { logout, getUserProfile } from '@/lib/auth';
-import { subscribeToContractsByClient, Contract } from '@/lib/db/contracts';
+import { subscribeToJobs, CleaningJob } from '@/lib/db/jobs';
 import { SupportModal } from '@/components/SupportModal';
 
 interface Notification {
@@ -60,7 +61,7 @@ export default function ClientPortal() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
-  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [jobs, setJobs] = useState<CleaningJob[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Get user profile from localStorage or use default
@@ -101,10 +102,14 @@ export default function ClientPortal() {
     }
   }, [router]);
 
-  // Subscribe to contracts
+  // Subscribe to jobs for this client
   useEffect(() => {
     if (!currentUser?.id) return;
-    const unsub = subscribeToContractsByClient(currentUser.id, setContracts);
+    const unsub = subscribeToJobs((allJobs) => {
+      // Filter jobs for this client by contractId
+      const clientJobs = allJobs.filter(j => j.clientId === currentUser.id);
+      setJobs(clientJobs);
+    });
     return () => unsub();
   }, [currentUser?.id]);
 
@@ -571,51 +576,42 @@ export default function ClientPortal() {
                   Support
                 </button>
               </div>
-              {contracts.length === 0 ? (
-                <p className="text-gray-400 text-sm">No contracts found. Contact RESET to get started.</p>
+              {jobs.length === 0 ? (
+                <p className="text-gray-400 text-sm">No jobs scheduled yet. Contact RESET to get started.</p>
               ) : (
                 <div className="space-y-3">
-                  {contracts.map((contract) => (
+                  {jobs.map((job) => (
                     <motion.div
-                      key={contract.id}
+                      key={job.id}
                       whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.1)' }}
                       className="p-4 rounded border border-reset-green/20 hover:border-reset-green/50 transition-colors"
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <h4 className="font-bold text-white text-sm">{contract.type}</h4>
+                        <h4 className="font-bold text-white text-sm">{job.type}</h4>
                         <span className={`px-2 py-1 text-xs rounded border font-bold ${
-                          contract.status === 'active'
+                          job.status === 'assigned' || job.status === 'in-progress'
                             ? 'bg-reset-green/20 text-reset-green border-reset-green/30'
                             : 'bg-gray-700/30 text-gray-300 border-gray-600/30'
                         }`}>
-                          {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
+                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                         </span>
                       </div>
                       <div className="space-y-1 text-xs text-gray-400 mb-3">
                         <div className="flex justify-between">
-                          <span>Frequency:</span>
-                          <span className="text-gray-200">{contract.frequency}</span>
+                          <span>Scheduled:</span>
+                          <span className="text-gray-200">
+                            {job.scheduledDate instanceof Timestamp ? job.scheduledDate.toDate().toLocaleDateString('en-AU') : new Date(job.scheduledDate).toLocaleDateString('en-AU')}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Rate:</span>
-                          <span className="text-gray-200">{contract.hourlyRate}</span>
+                          <span>Duration:</span>
+                          <span className="text-gray-200">{job.duration} hours</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Period:</span>
-                          <span className="text-gray-200">{contract.startDate} to {contract.endDate}</span>
+                          <span>Location:</span>
+                          <span className="text-gray-200">{job.location}</span>
                         </div>
                       </div>
-                      {contract.signedPdfUrl && (
-                        <a
-                          href={contract.signedPdfUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="w-full py-2 text-xs bg-reset-green/20 text-reset-green rounded hover:bg-reset-green/30 transition-colors font-bold flex items-center justify-center gap-2"
-                        >
-                          <Download size={12} />
-                          Download Contract
-                        </a>
-                      )}
                     </motion.div>
                   ))}
                 </div>

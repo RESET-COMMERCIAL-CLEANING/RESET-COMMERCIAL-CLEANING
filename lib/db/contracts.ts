@@ -15,53 +15,49 @@ import {
 
 export interface Contract {
   id: string;
-  clientId: string;
-  clientName: string;
-  subcontractorId: string;
-  subcontractorName: string;
-  type: string;
-  startDate: string;
-  endDate: string;
-  frequency: string;
-  hourlyRate?: string;
-  status: 'active' | 'completed' | 'cancelled' | 'paused' | 'ended';
-  jobsCompleted: number;
-  notes?: string;
-  signedPdfUrl?: string;
-  onboardingStatus: 'pending' | 'completed';
+  userId: string;                       // business owner or subcontractor ID
+  contractType: 'business-owner' | 'subcontractor';
+  status: 'active' | 'inactive';
   createdAt: Timestamp;
   updatedAt?: Timestamp;
-  archivedAt?: Timestamp;
-  endedReason?: string;
 
-  // --- Financial tracking fields ---
-  chargeRate?: number;              // hourly rate billed to client
-  subcontractorRate?: number;       // hourly rate paid to subcontractor
-  estimatedHoursPerVisit?: number;  // estimated hours per cleaning visit
-  visitsPerMonth?: number;          // number of visits per month
-  overheadPercent?: number;         // admin overhead percentage (default 10)
+  // --- Business Owner Contract (signup data) ---
+  company?: string;
+  address?: string;
+  propertyType?: 'office' | 'warehouse' | 'retail' | 'medical' | 'restaurant' | 'school' | 'other';
+  propertyFloors?: number;
+  companySize?: 'micro' | 'small' | 'medium' | 'large';
+  cleaningFrequency?: 'daily' | 'twice-weekly' | 'weekly' | 'bi-weekly' | 'monthly' | 'one-time';
+  preferredTime?: 'early-morning' | 'business-hours' | 'evening' | 'weekend';
+  serviceTypes?: string;
+  specialRequirements?: string;
+  focusAreas?: string;
+  estimatedBudget?: string;
+  billingPreference?: 'per-service' | 'monthly' | 'quarterly';
+  primaryContactName?: string;
+  primaryContactPhone?: string;
+  accessRequirements?: string;
 
-  // --- Actual tracking (updated as jobs complete) ---
-  totalHoursCompleted?: number;     // sum of all completed job durations
-  actualRevenue?: number;           // total revenue earned
-  actualSubcontractorCost?: number; // total paid to subcontractor
-
-  // --- Variance tracking (hybrid availability approach) ---
-  projectedJobsPerMonth?: number;    // initial estimate from frequency
-  actualJobsCompletedThisMonth?: number;
-  variancePercent?: number;          // ((projected - actual) / projected) × 100
-  varianceReason?: string;           // e.g. "Subcontractor unavailable X days"
-  lastVarianceUpdateAt?: Timestamp;
-
-  // --- Reassignment tracking ---
-  originalAssignedSubId?: string;    // track who was originally assigned
-  replacementSubId?: string;         // track reassignments
-  reassignmentHistory?: Array<{
-    from: string;                    // subcontractor ID
-    to: string;                      // replacement ID
-    reason: string;                  // "Unavailable", "Client request", etc.
-    reassignedAt: Timestamp;
-  }>;
+  // --- Subcontractor Contract (signup data) ---
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  suburb?: string;
+  serviceAreaKm?: number;
+  preferredShifts?: string;
+  specializations?: string;
+  equipmentOwned?: string;
+  abn?: string;
+  hasPublicLiability?: boolean;
+  liabilityInsuranceExpiry?: string;
+  liabilityPolicyNumber?: string;
+  hasPoliceCheck?: boolean;
+  policeCheckExpiry?: string;
+  baseHourlyRate?: number;
+  weeklyAvailableHours?: number;
+  references?: string;
+  ecoFriendlyCapable?: boolean;
 }
 
 const contractsCollection = collection(db, 'contracts');
@@ -80,13 +76,19 @@ export const getAllContracts = async (): Promise<Contract[]> => {
   }));
 };
 
-export const getContractsBySubcontractor = async (subcontractorId: string): Promise<Contract[]> => {
-  const q = query(contractsCollection, where('subcontractorId', '==', subcontractorId));
+export const getContractsByType = async (contractType: 'business-owner' | 'subcontractor'): Promise<Contract[]> => {
+  const q = query(contractsCollection, where('contractType', '==', contractType));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({
     ...doc.data() as Contract,
     id: doc.id,
   }));
+};
+
+export const getContractByUserId = async (userId: string): Promise<Contract | null> => {
+  const q = query(contractsCollection, where('userId', '==', userId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.length > 0 ? (querySnapshot.docs[0].data() as Contract) : null;
 };
 
 export const createContract = async (data: Omit<Contract, 'id' | 'createdAt'>): Promise<Contract> => {
@@ -122,25 +124,11 @@ export const subscribeToAllContracts = (callback: (contracts: Contract[]) => voi
   });
 };
 
-export const subscribeToContractsBySubcontractor = (
-  subcontractorId: string,
+export const subscribeToContractsByType = (
+  contractType: 'business-owner' | 'subcontractor',
   callback: (contracts: Contract[]) => void
 ) => {
-  const q = query(contractsCollection, where('subcontractorId', '==', subcontractorId));
-  return onSnapshot(q, (querySnapshot) => {
-    const contracts = querySnapshot.docs.map(doc => ({
-      ...doc.data() as Contract,
-      id: doc.id,
-    }));
-    callback(contracts);
-  });
-};
-
-export const subscribeToContractsByClient = (
-  clientId: string,
-  callback: (contracts: Contract[]) => void
-) => {
-  const q = query(contractsCollection, where('clientId', '==', clientId));
+  const q = query(contractsCollection, where('contractType', '==', contractType));
   return onSnapshot(q, (querySnapshot) => {
     const contracts = querySnapshot.docs.map(doc => ({
       ...doc.data() as Contract,

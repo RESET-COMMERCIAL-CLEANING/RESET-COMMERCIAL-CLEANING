@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { MapPin, DollarSign, Camera, Clock, LogOut, User, TrendingUp, MessageSquare, CheckCircle, Calendar, X, Heart, AlertCircle, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Timestamp } from 'firebase/firestore';
 import { logout, getUserProfile } from '@/lib/auth';
 import { uploadBeforeAfterPhoto } from '@/lib/storage';
 import { SupportModal } from '@/components/SupportModal';
 import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
-import { subscribeToContractsBySubcontractor, Contract } from '@/lib/db/contracts';
-import { subscribeToJobs, CleaningJob, updateJob } from '@/lib/db/jobs';
+import { subscribeToJobs, CleaningJob, updateJob, subscribeToJobsBySubcontractor } from '@/lib/db/jobs';
 
 interface Notification {
   id: string;
@@ -66,7 +66,7 @@ export default function SubcontractorPortal() {
     type: 'job' | 'contract';
     id: string | number;
     label: string;
-    contractId?: number;
+    contractId?: string;
   } | null>(null);
   const [rescheduleForm, setRescheduleForm] = useState({
     reason: '',
@@ -171,28 +171,18 @@ export default function SubcontractorPortal() {
     },
   ]);
 
-  const [contracts, setContracts] = useState<Contract[]>([]);
   const [allFirestoreJobs, setAllFirestoreJobs] = useState<CleaningJob[]>([]);
 
-  // Subscribe to contracts
+  // Subscribe to jobs assigned to this subcontractor
   useEffect(() => {
     if (!currentUser?.id) return;
-    const unsub = subscribeToContractsBySubcontractor(currentUser.id, setContracts);
-    return () => unsub();
-  }, [currentUser?.id]);
-
-  // Subscribe to jobs
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    const unsub = subscribeToJobs((jobs) => {
-      setAllFirestoreJobs(jobs.filter(j =>
-        j.subcontractorId === currentUser.id || j.status === 'available'
-      ));
+    const unsub = subscribeToJobsBySubcontractor(currentUser.id, (jobs) => {
+      setAllFirestoreJobs(jobs);
     });
     return () => unsub();
   }, [currentUser?.id]);
 
-  const hasExtendedContracts = contracts.some(c => c.status === 'active');
+  const hasExtendedContracts = allFirestoreJobs.length > 0;
 
   const upcomingJobs = allFirestoreJobs
     .filter(j => j.subcontractorId === currentUser?.id &&
@@ -633,64 +623,61 @@ export default function SubcontractorPortal() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {contracts.length === 0 ? (
-              <p className="text-gray-400 col-span-2">No contracts found. You'll see them here once the super user creates them.</p>
+            {allFirestoreJobs.length === 0 ? (
+              <p className="text-gray-400 col-span-2">No jobs assigned yet. You'll see them here once work is assigned to you.</p>
             ) : (
-              contracts.map((contract) => (
-                <div key={contract.id}>
+              allFirestoreJobs.map((job) => (
+                <div key={job.id}>
                   <button
-                    onClick={() => handleViewContract(contract.id)}
+                    onClick={() => handleViewContract(job.id)}
                     className="w-full p-6 rounded-lg border-2 border-reset-green/30 hover:border-reset-green/70 transition-all text-left group bg-reset-green/5 hover:bg-reset-green/10"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="font-bold text-white group-hover:text-reset-green transition-colors mb-1">{contract.clientName}</h3>
-                        <p className="text-sm text-reset-green font-bold">{contract.type}</p>
+                        <h3 className="font-bold text-white group-hover:text-reset-green transition-colors mb-1">{job.clientName || 'Job'}</h3>
+                        <p className="text-sm text-reset-green font-bold">{job.type}</p>
                       </div>
                       <span className={`px-3 py-1 rounded text-xs font-bold ${
-                        contract.status === 'active' ? 'bg-reset-green/30 text-reset-green' : 'bg-gray-600/30 text-gray-300'
+                        job.status === 'assigned' || job.status === 'in-progress' ? 'bg-reset-green/30 text-reset-green' : 'bg-gray-600/30 text-gray-300'
                       }`}>
-                        {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
+                        {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                       </span>
                     </div>
 
                     <div className="space-y-2 text-sm text-gray-400 mb-4">
                       <div className="flex items-center gap-2">
                         <Calendar size={14} className="text-reset-green" />
-                        {contract.startDate} to {contract.endDate}
+                        {job.scheduledDate instanceof Timestamp ? job.scheduledDate.toDate().toLocaleDateString('en-AU') : new Date(job.scheduledDate).toLocaleDateString('en-AU')}
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock size={14} className="text-reset-green" />
-                        {contract.frequency}
+                        {job.duration} hours
                       </div>
                       <div className="flex items-center gap-2">
                         <DollarSign size={14} className="text-reset-green" />
-                        {contract.hourlyRate}
+                        ${job.rate}/hr
                       </div>
                     </div>
-
-                    {selectedContract === contract.id && (
-                      <div className="pt-4 border-t border-reset-green/20 text-xs text-gray-400">
-                        <p>Jobs completed: <span className="text-reset-green font-bold">{contract.jobsCompleted}</span></p>
-                      </div>
-                    )}
                   </button>
 
-                  {/* Contract-specific reschedule button */}
-                  <button
-                    onClick={() => {
-                      setRescheduleTarget({
-                        type: 'contract',
-                        id: contract.id,
-                        label: contract.clientName,
-                      });
-                      setShowRescheduleModal(true);
-                    }}
-                    className="w-full mt-3 py-2 bg-reset-green/10 text-reset-green rounded-lg hover:bg-reset-green/20 text-xs font-bold transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Calendar size={14} />
-                    Request Reschedule
-                  </button>
+                  {/* Job-specific reschedule button */}
+                  {(job.status === 'assigned' || job.status === 'in-progress') && (
+                    <button
+                      onClick={() => {
+                        setRescheduleTarget({
+                          type: 'job',
+                          id: job.id,
+                          label: `${job.clientName || 'Job'} - ${job.type}`,
+                          contractId: job.contractId,
+                        });
+                        setShowRescheduleModal(true);
+                      }}
+                      className="w-full mt-3 py-2 bg-reset-green/10 text-reset-green rounded-lg hover:bg-reset-green/20 text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Calendar size={14} />
+                      Request Reschedule
+                    </button>
+                  )}
                 </div>
               ))
             )}

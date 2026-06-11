@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { subscribeToAllContracts, Contract } from '@/lib/db/contracts';
-import { subscribeToAllUsers, UserProfile } from '@/lib/db/users';
-import { TrendingUp, DollarSign, Users, Zap, AlertCircle } from 'lucide-react';
+import { subscribeToJobs, CleaningJob } from '@/lib/db/jobs';
+import { subscribeToContractsByType, Contract } from '@/lib/db/contracts';
+import { TrendingUp, DollarSign, Users, AlertCircle, Zap } from 'lucide-react';
 
 const PROPERTY_TYPE_RATES: Record<string, number> = {
   office: 75,
@@ -16,364 +16,271 @@ const PROPERTY_TYPE_RATES: Record<string, number> = {
   other: 70,
 };
 
-const FREQUENCY_VISITS: Record<string, number> = {
-  daily: 22,
-  'twice-weekly': 8,
-  weekly: 4,
-  'bi-weekly': 2,
-  monthly: 1,
-  'one-time': 0.5,
-};
+interface ClientProfitData {
+  clientId: string;
+  clientName: string;
+  propertyType?: string;
+  cleaningFrequency?: string;
+  totalJobs: number;
+  completedJobs: CleaningJob[];
+  totalRevenue: number;
+  totalSubcontractorCost: number;
+  grossProfit: number;
+  subcontractorBreakdown: Record<string, {
+    name: string;
+    jobsCompleted: number;
+    hoursWorked: number;
+    costPaid: number;
+  }>;
+}
 
 export default function ProfitAnalysis() {
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [jobs, setJobs] = useState<CleaningJob[]>([]);
+  const [businessOwnerContracts, setBusinessOwnerContracts] = useState<Contract[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
 
   useEffect(() => {
-    const unsub1 = subscribeToAllContracts((allContracts) => {
-      const activeContracts = allContracts.filter(c => c.status === 'active');
-      setContracts(activeContracts);
-      if (!selectedContract && activeContracts.length > 0) {
-        setSelectedContract(activeContracts[0]);
-      }
-    });
-    const unsub2 = subscribeToAllUsers(setUsers);
+    const unsub1 = subscribeToJobs(setJobs);
+    const unsub2 = subscribeToContractsByType('business-owner', setBusinessOwnerContracts);
     return () => {
       unsub1();
       unsub2();
     };
   }, []);
 
-  const getClientProfile = (clientId: string): UserProfile | null => {
-    return users.find(u => u.id === clientId) || null;
+  // Get client name from contract
+  const getClientName = (clientId: string): string => {
+    const contract = businessOwnerContracts.find(c => c.userId === clientId);
+    return contract?.company || 'Unknown Client';
   };
 
-  const getSubcontractorProfile = (subId: string): UserProfile | null => {
-    return users.find(u => u.id === subId) || null;
+  const getClientPropertyType = (clientId: string): string | undefined => {
+    const contract = businessOwnerContracts.find(c => c.userId === clientId);
+    return contract?.propertyType;
   };
 
-  const calculateMonthly = (contract: Contract) => {
-    const clientProfile = getClientProfile(contract.clientId);
-    const subProfile = getSubcontractorProfile(contract.subcontractorId);
-
-    // Charge rate: from contract, or based on property type
-    const chargeRate = contract.chargeRate || PROPERTY_TYPE_RATES[clientProfile?.propertyType || 'other'] || 70;
-
-    // Sub rate: from contract, or from subcontractor's baseHourlyRate
-    const subRate = contract.subcontractorRate || subProfile?.baseHourlyRate || 0;
-
-    // Hours per visit: from contract, or 3 as default
-    const hoursPerVisit = contract.estimatedHoursPerVisit || 3;
-
-    // Visits per month: from contract, or based on cleaning frequency
-    const visitsPerMonth = contract.visitsPerMonth || FREQUENCY_VISITS[clientProfile?.cleaningFrequency || 'weekly'] || 4;
-
-    // Overhead percent
-    const overheadPct = contract.overheadPercent || 10;
-
-    const monthlyRevenue = chargeRate * hoursPerVisit * visitsPerMonth;
-    const monthlySubCost = subRate * hoursPerVisit * visitsPerMonth;
-    const overhead = monthlyRevenue > 0 ? (monthlyRevenue - monthlySubCost) * (overheadPct / 100) : 0;
-    const grossProfit = monthlyRevenue - monthlySubCost;
-    const netProfit = grossProfit - overhead;
-
-    return { monthlyRevenue, monthlySubCost, overhead, grossProfit, netProfit, chargeRate, subRate, hoursPerVisit, visitsPerMonth };
+  const getClientFrequency = (clientId: string): string | undefined => {
+    const contract = businessOwnerContracts.find(c => c.userId === clientId);
+    return contract?.cleaningFrequency;
   };
 
-  const calculateContractTotal = (contract: Contract) => {
-    if (!contract.startDate || !contract.endDate) return null;
+  // Calculate P&L for all clients
+  const calculateAllClientsProfit = (): ClientProfitData[] => {
+    const clientMap: Record<string, ClientProfitData> = {};
 
-    try {
-      const start = new Date(contract.startDate);
-      const end = new Date(contract.endDate);
-      const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-      const monthlyPnL = calculateMonthly(contract);
+    // Get unique client IDs from completed jobs
+    const completedJobs = jobs.filter(j => j.status === 'completed' && j.completedBySubId);
 
-      return {
-        months: Math.max(1, months),
-        totalRevenue: monthlyPnL.monthlyRevenue * months,
-        totalSubCost: monthlyPnL.monthlySubCost * months,
-        totalGrossProfit: monthlyPnL.grossProfit * months,
-      };
-    } catch {
-      return null;
-    }
+    completedJobs.forEach(job => {
+      if (!clientMap[job.contractId]) {
+        clientMap[job.contractId] = {
+          clientId: job.contractId,
+          clientName: getClientName(job.contractId),
+          propertyType: getClientPropertyType(job.contractId),
+          cleaningFrequency: getClientFrequency(job.contractId),
+          totalJobs: 0,
+          completedJobs: [],
+          totalRevenue: 0,
+          totalSubcontractorCost: 0,
+          grossProfit: 0,
+          subcontractorBreakdown: {},
+        };
+      }
+
+      const client = clientMap[job.contractId];
+      client.completedJobs.push(job);
+      client.totalJobs += 1;
+
+      // Use job.rate as charge rate (what we charged the client)
+      const chargeAmount = job.rate * job.duration;
+      client.totalRevenue += chargeAmount;
+
+      // Use job.subcontractorRate or fallback to rate
+      const subRate = job.subcontractorRate || job.rate;
+      const subCost = subRate * job.duration;
+      client.totalSubcontractorCost += subCost;
+
+      // Track by subcontractor
+      if (job.completedBySubId) {
+        if (!client.subcontractorBreakdown[job.completedBySubId]) {
+          client.subcontractorBreakdown[job.completedBySubId] = {
+            name: job.subcontractorName || 'Unknown',
+            jobsCompleted: 0,
+            hoursWorked: 0,
+            costPaid: 0,
+          };
+        }
+        const subBreakdown = client.subcontractorBreakdown[job.completedBySubId];
+        subBreakdown.jobsCompleted += 1;
+        subBreakdown.hoursWorked += job.duration;
+        subBreakdown.costPaid += subCost;
+      }
+    });
+
+    // Calculate gross profit
+    Object.values(clientMap).forEach(client => {
+      client.grossProfit = client.totalRevenue - client.totalSubcontractorCost;
+    });
+
+    return Object.values(clientMap);
   };
 
-  const calculateActualProgress = (contract: Contract) => {
-    const totalHours = contract.totalHoursCompleted || 0;
-    const actualRevenue = contract.actualRevenue || 0;
-    const actualSubCost = contract.actualSubcontractorCost || 0;
-    const actualGrossProfit = actualRevenue - actualSubCost;
-
-    return { totalHours, actualRevenue, actualSubCost, actualGrossProfit };
-  };
-
-  const selected = selectedContract || contracts[0];
-  const monthly = selected ? calculateMonthly(selected) : null;
-  const contractTotal = selected ? calculateContractTotal(selected) : null;
-  const actual = selected ? calculateActualProgress(selected) : null;
+  const clientProfits = calculateAllClientsProfit();
+  const selectedClient = selectedClientId
+    ? clientProfits.find(c => c.clientId === selectedClientId)
+    : clientProfits[0];
 
   return (
     <div className="p-6 lg:p-8 rounded-xl glass border border-reset-green/30">
       <h2 className="text-2xl font-bold text-white mb-8">Profit & Loss Analysis</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left: Contract List */}
+        {/* Left: Client List */}
         <div className="lg:col-span-1">
-          <h3 className="text-lg font-bold text-white mb-4">Contracts</h3>
+          <h3 className="text-lg font-bold text-white mb-4">Clients</h3>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {contracts.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">No contracts found</p>
+            {clientProfits.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-4">No completed jobs yet</p>
             ) : (
-              contracts.map((contract) => {
-                const pnl = calculateMonthly(contract);
-                return (
-                  <button
-                    key={contract.id}
-                    onClick={() => setSelectedContract(contract)}
-                    className={`w-full p-3 rounded-lg border transition-all text-left text-sm ${
-                      selected?.id === contract.id
-                        ? 'bg-reset-green/20 border-reset-green/50'
-                        : 'bg-gray-900/50 border-gray-700 hover:border-gray-600'
-                    }`}
-                  >
-                    <div className="font-bold text-white truncate">
-                      {contract.clientName} / {contract.subcontractorName}
-                    </div>
-                    <p className="text-xs text-gray-400 truncate">{contract.type}</p>
-                    <div className="flex items-center justify-between mt-2 text-xs">
-                      <span className={`px-2 py-1 rounded ${
-                        contract.status === 'active' ? 'bg-reset-green/20 text-reset-green' : 'bg-gray-700 text-gray-300'
-                      }`}>
-                        {contract.status}
-                      </span>
-                      <span className="text-reset-green font-bold">
-                        ${pnl.netProfit.toFixed(0)}/mo
-                      </span>
-                    </div>
-                  </button>
-                );
-              })
+              clientProfits.map((client) => (
+                <button
+                  key={client.clientId}
+                  onClick={() => setSelectedClientId(client.clientId)}
+                  className={`w-full p-3 rounded-lg border transition-all text-left text-sm ${
+                    selectedClient?.clientId === client.clientId
+                      ? 'bg-reset-green/20 border-reset-green/50'
+                      : 'bg-gray-900/50 border-gray-700 hover:border-gray-600'
+                  }`}
+                >
+                  <div className="font-bold text-white truncate">{client.clientName}</div>
+                  <p className="text-xs text-gray-400 truncate">{client.totalJobs} completed jobs</p>
+                  <div className="flex items-center justify-between mt-2 text-xs">
+                    <span className="text-gray-400">{client.propertyType || 'Property'}</span>
+                    <span className="text-reset-green font-bold">
+                      ${client.grossProfit.toFixed(0)}
+                    </span>
+                  </div>
+                </button>
+              ))
             )}
           </div>
         </div>
 
         {/* Right: Detail View */}
-        {selected && monthly && (
+        {selectedClient && (
           <div className="lg:col-span-3">
             <motion.div
-              key={selected.id}
+              key={selectedClient.clientId}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-6"
             >
               {/* Header */}
               <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                <h3 className="text-lg font-bold text-white">{selected.clientName}</h3>
-                <p className="text-sm text-gray-400 mt-1">Service Provider: {selected.subcontractorName}</p>
-                <p className="text-sm text-gray-400 mt-1">{selected.type} • {selected.status}</p>
+                <h3 className="text-lg font-bold text-white">{selectedClient.clientName}</h3>
+                <p className="text-sm text-gray-400 mt-1">Property Type: {selectedClient.propertyType || '—'}</p>
+                <p className="text-sm text-gray-400">Cleaning Frequency: {selectedClient.cleaningFrequency || '—'}</p>
+                <p className="text-sm text-gray-400 mt-1">{selectedClient.totalJobs} completed jobs</p>
               </div>
 
-              {/* Projected Monthly Metrics */}
+              {/* Summary Metrics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-blue-900/20 rounded-lg border border-blue-500/30">
                   <div className="flex items-center gap-2 text-blue-400 text-xs font-bold mb-2">
                     <DollarSign size={16} />
-                    MONTHLY REVENUE
+                    TOTAL REVENUE
                   </div>
-                  <p className="text-2xl font-bold text-white">${monthly.monthlyRevenue.toFixed(2)}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    ${selected.chargeRate}/hr × {selected.estimatedHoursPerVisit}h × {selected.visitsPerMonth}x/month
-                  </p>
+                  <p className="text-2xl font-bold text-white">${selectedClient.totalRevenue.toFixed(2)}</p>
+                  <p className="text-xs text-gray-400 mt-1">{selectedClient.totalJobs} jobs</p>
                 </div>
 
                 <div className="p-4 bg-red-900/20 rounded-lg border border-red-500/30">
                   <div className="flex items-center gap-2 text-red-400 text-xs font-bold mb-2">
                     <Users size={16} />
-                    MONTHLY SUB COST
+                    TOTAL SUB COST
                   </div>
-                  <p className="text-2xl font-bold text-white">${monthly.monthlySubCost.toFixed(2)}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    ${selected.subcontractorRate}/hr × {selected.estimatedHoursPerVisit}h × {selected.visitsPerMonth}x/month
-                  </p>
+                  <p className="text-2xl font-bold text-white">${selectedClient.totalSubcontractorCost.toFixed(2)}</p>
                 </div>
 
                 <div className="p-4 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
                   <div className="flex items-center gap-2 text-yellow-400 text-xs font-bold mb-2">
                     <Zap size={16} />
-                    MONTHLY GROSS PROFIT
+                    GROSS PROFIT
                   </div>
-                  <p className="text-2xl font-bold text-white">${monthly.grossProfit.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-white">${selectedClient.grossProfit.toFixed(2)}</p>
                 </div>
 
                 <div className="p-4 bg-reset-green/20 rounded-lg border border-reset-green/50">
                   <div className="flex items-center gap-2 text-reset-green text-xs font-bold mb-2">
                     <TrendingUp size={16} />
-                    MONTHLY NET PROFIT
+                    MARGIN
                   </div>
-                  <p className="text-2xl font-bold text-white">${monthly.netProfit.toFixed(2)}</p>
-                  <p className="text-xs text-gray-400 mt-1">After {selected.overheadPercent}% overhead</p>
+                  <p className="text-2xl font-bold text-white">
+                    {selectedClient.totalRevenue > 0
+                      ? ((selectedClient.grossProfit / selectedClient.totalRevenue) * 100).toFixed(1)
+                      : '0'}%
+                  </p>
                 </div>
               </div>
 
-              {/* Actuals Section */}
-              {actual && actual.totalHours > 0 && (
-                <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                  <h4 className="font-bold text-white mb-4">Actuals So Far</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-400">Total Hours Completed</p>
-                      <p className="text-lg font-bold text-white">{actual.totalHours}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Revenue Earned</p>
-                      <p className="text-lg font-bold text-reset-green">${actual.actualRevenue.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Sub Cost Paid</p>
-                      <p className="text-lg font-bold text-red-400">${actual.actualSubCost.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Gross Profit So Far</p>
-                      <p className="text-lg font-bold text-yellow-400">${actual.actualGrossProfit.toFixed(2)}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Contract Variance Tracking */}
-              {selected && (() => {
-                const subProfile = users.find(u => u.id === selected.subcontractorId);
-                return (
-                <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                  <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-                    <AlertCircle size={18} />
-                    Contract Variance Tracking
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-400">Projected Jobs/Month</p>
-                        <p className="text-lg font-bold text-white">{selected.projectedJobsPerMonth || selected.visitsPerMonth || 4}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-400">Completed This Month</p>
-                        <p className="text-lg font-bold text-reset-green">{selected.actualJobsCompletedThisMonth || 0}</p>
-                      </div>
-                    </div>
-
-                    {selected.variancePercent !== undefined && selected.variancePercent > 0 && (
-                      <div className="p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
-                        <p className="text-sm text-yellow-400 font-semibold mb-2">Variance: {selected.variancePercent.toFixed(1)}%</p>
-                        {selected.varianceReason && (
-                          <p className="text-xs text-gray-300">{selected.varianceReason}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {subProfile && subProfile.unavailableDates && subProfile.unavailableDates.length > 0 && (
-                      <div className="border-t border-gray-700 pt-3">
-                        <p className="text-xs text-gray-400 mb-2 font-semibold">Recent Unavailability</p>
-                        <div className="flex flex-wrap gap-2">
-                          {subProfile.unavailableDates.slice(0, 3).map((u, i) => (
-                            <span key={i} className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded">
-                              {u.date}{u.reason ? ` - ${u.reason}` : ''}
-                            </span>
-                          ))}
-                          {subProfile.unavailableDates.length > 3 && (
-                            <span className="text-xs text-gray-500">+{subProfile.unavailableDates.length - 3} more</span>
-                          )}
+              {/* Subcontractor Breakdown */}
+              <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                <h4 className="font-bold text-white mb-4 flex items-center gap-2">
+                  <Users size={18} />
+                  Service Provider Breakdown
+                </h4>
+                <div className="space-y-3">
+                  {Object.values(selectedClient.subcontractorBreakdown).length === 0 ? (
+                    <p className="text-gray-400 text-sm">No service provider data</p>
+                  ) : (
+                    Object.entries(selectedClient.subcontractorBreakdown).map(([subId, breakdown]) => (
+                      <div key={subId} className="p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-semibold text-white">{breakdown.name}</p>
+                            <p className="text-xs text-gray-400">{breakdown.jobsCompleted} jobs</p>
+                          </div>
+                          <p className="text-lg font-bold text-red-400">-${breakdown.costPaid.toFixed(2)}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="text-gray-400">Hours Worked: <span className="text-white">{breakdown.hoursWorked}h</span></div>
+                          <div className="text-gray-400">Avg Rate: <span className="text-white">${(breakdown.costPaid / breakdown.hoursWorked).toFixed(2)}/hr</span></div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-                );
-              })()}
-
-              {/* Cost Breakdown Table */}
-              <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                <h4 className="font-bold text-white mb-4">Full Cost Breakdown</h4>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-700">
-                        <th className="text-left py-2 text-gray-400 font-bold">Item</th>
-                        <th className="text-right py-2 text-gray-400 font-bold">Rate</th>
-                        <th className="text-right py-2 text-gray-400 font-bold">Est./Month</th>
-                        <th className="text-right py-2 text-gray-400 font-bold">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody className="space-y-1">
-                      <tr className="border-b border-gray-700">
-                        <td className="py-2 text-gray-300">Client Charge</td>
-                        <td className="text-right text-gray-300">${selected.chargeRate}/hr</td>
-                        <td className="text-right text-gray-300">{selected.estimatedHoursPerVisit}h × {selected.visitsPerMonth}x</td>
-                        <td className="text-right font-bold text-reset-green">${monthly.monthlyRevenue.toFixed(2)}</td>
-                      </tr>
-                      <tr className="border-b border-gray-700">
-                        <td className="py-2 text-gray-300">Subcontractor Cost</td>
-                        <td className="text-right text-gray-300">${selected.subcontractorRate}/hr</td>
-                        <td className="text-right text-gray-300">{selected.estimatedHoursPerVisit}h × {selected.visitsPerMonth}x</td>
-                        <td className="text-right font-bold text-red-400">-${monthly.monthlySubCost.toFixed(2)}</td>
-                      </tr>
-                      <tr className="border-b border-gray-700">
-                        <td className="py-2 text-gray-300">Overhead ({selected.overheadPercent}%)</td>
-                        <td className="text-right text-gray-300">—</td>
-                        <td className="text-right text-gray-300">—</td>
-                        <td className="text-right font-bold text-red-400">-${monthly.overhead.toFixed(2)}</td>
-                      </tr>
-                      <tr className="bg-reset-green/10">
-                        <td className="py-2 font-bold text-white">Gross Profit</td>
-                        <td className="text-right"></td>
-                        <td className="text-right"></td>
-                        <td className="text-right font-bold text-reset-green">${monthly.grossProfit.toFixed(2)}</td>
-                      </tr>
-                      <tr className="bg-reset-green/20">
-                        <td className="py-2 font-bold text-white">Net Profit</td>
-                        <td className="text-right"></td>
-                        <td className="text-right"></td>
-                        <td className="text-right font-bold text-reset-green text-lg">${monthly.netProfit.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2 text-gray-400">Margin</td>
-                        <td className="text-right"></td>
-                        <td className="text-right"></td>
-                        <td className="text-right text-gray-300 font-bold">
-                          {monthly.monthlyRevenue > 0 ? ((monthly.netProfit / monthly.monthlyRevenue) * 100).toFixed(1) : '0'}%
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                    ))
+                  )}
                 </div>
               </div>
 
-              {/* Contract Term Totals */}
-              {contractTotal && (
-                <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                  <h4 className="font-bold text-white mb-4">Contract Term Totals ({contractTotal.months} months)</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-400">Total Revenue</p>
-                      <p className="text-lg font-bold text-reset-green">${contractTotal.totalRevenue.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Total Sub Cost</p>
-                      <p className="text-lg font-bold text-red-400">${contractTotal.totalSubCost.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Total Gross Profit</p>
-                      <p className="text-lg font-bold text-yellow-400">${contractTotal.totalGrossProfit.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Period</p>
-                      <p className="text-lg font-bold text-white">{selected.startDate} → {selected.endDate}</p>
-                    </div>
-                  </div>
+              {/* Completed Jobs List */}
+              <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                <h4 className="font-bold text-white mb-4">Completed Jobs</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {selectedClient.completedJobs.length === 0 ? (
+                    <p className="text-gray-400 text-sm">No completed jobs</p>
+                  ) : (
+                    selectedClient.completedJobs.map((job) => (
+                      <div key={job.id} className="p-3 bg-gray-800/50 rounded border border-gray-700 text-sm">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-white">{job.type}</p>
+                            <p className="text-xs text-gray-400">
+                              {job.location} • {job.duration}h
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              by {job.subcontractorName || 'Unknown'} • {job.completedAt ? new Date(job.completedAt.seconds * 1000).toLocaleDateString() : '—'}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-reset-green">${(job.rate * job.duration).toFixed(2)}</p>
+                            <p className="text-xs text-red-400">-${((job.subcontractorRate || job.rate) * job.duration).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              )}
+              </div>
             </motion.div>
           </div>
         )}

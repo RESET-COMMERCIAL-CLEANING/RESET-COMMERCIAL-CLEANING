@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Building2, Users, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { createUser } from '@/lib/db/users';
+import { createContract } from '@/lib/db/contracts';
 import { useToast } from '@/components/Toast';
 import { Toast } from '@/components/Toast';
 
@@ -215,6 +216,29 @@ function ClientSignupForm({ onBack }: { onBack: () => void }) {
       };
 
       await createUser(uid, userData);
+
+      // Create contract record for business owner
+      await createContract({
+        userId: uid,
+        contractType: 'business-owner',
+        status: 'active',
+        company: formData.companyName,
+        address: formData.address,
+        propertyType: formData.propertyType as any,
+        propertyFloors: formData.propertyFloors ? parseInt(formData.propertyFloors) : undefined,
+        companySize: formData.companySize as any,
+        cleaningFrequency: formData.cleaningFrequency as any,
+        preferredTime: formData.preferredTime as any,
+        serviceTypes: formData.serviceTypes.join(', '),
+        focusAreas: formData.focusAreas,
+        specialRequirements: formData.specialRequirements,
+        estimatedBudget: formData.estimatedBudget,
+        billingPreference: formData.billingPreference as any,
+        primaryContactName: formData.primaryContactName,
+        primaryContactPhone: formData.primaryContactPhone,
+        accessRequirements: formData.accessRequirements,
+      });
+
       addToast('Account created successfully! Please log in.', 'success');
       setSubmitted(true);
     } catch (error) {
@@ -739,6 +763,33 @@ function SubcontractorSignupForm({ onBack }: { onBack: () => void }) {
       };
 
       await createUser(uid, userData);
+
+      // Create contract record for subcontractor
+      await createContract({
+        userId: uid,
+        contractType: 'subcontractor',
+        status: 'active',
+        firstName,
+        lastName: lastNameParts.join(' '),
+        email: formData.email,
+        phone: formData.phone,
+        suburb: formData.suburb,
+        serviceAreaKm: formData.serviceAreaKm ? parseInt(formData.serviceAreaKm) : undefined,
+        weeklyAvailableHours: formData.weeklyAvailableHours ? parseInt(formData.weeklyAvailableHours) : undefined,
+        preferredShifts: formData.preferredShifts.join(', '),
+        specializations: formData.specializations.join(', '),
+        equipmentOwned: formData.equipmentOwned,
+        abn: formData.abn,
+        hasPublicLiability: formData.hasPublicLiability === 'yes',
+        liabilityInsuranceExpiry: formData.liabilityInsuranceExpiry,
+        liabilityPolicyNumber: formData.liabilityPolicyNumber,
+        hasPoliceCheck: formData.hasPoliceCheck === 'yes',
+        policeCheckExpiry: formData.policeCheckExpiry,
+        baseHourlyRate: formData.baseHourlyRate ? parseInt(formData.baseHourlyRate) : undefined,
+        ecoFriendlyCapable: formData.ecoFriendlyCapable === 'yes',
+        references: formData.references,
+      });
+
       addToast('Account created successfully! Please log in.', 'success');
       setSubmitted(true);
     } catch (error) {
