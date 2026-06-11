@@ -9,6 +9,7 @@ import { Timestamp } from 'firebase/firestore';
 import { generateMonthlyReportPDF } from '@/lib/pdfGenerator';
 import { logout, getUserProfile } from '@/lib/auth';
 import { subscribeToJobs, CleaningJob } from '@/lib/db/jobs';
+import { subscribeToContractsByType, Contract } from '@/lib/db/contracts';
 import { SupportModal } from '@/components/SupportModal';
 
 interface Notification {
@@ -62,6 +63,7 @@ export default function ClientPortal() {
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [jobs, setJobs] = useState<CleaningJob[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Get user profile from localStorage
@@ -109,6 +111,19 @@ export default function ClientPortal() {
       // Filter jobs for this client by contractId
       const clientJobs = allJobs.filter(j => j.clientId === currentUser.id);
       setJobs(clientJobs);
+    });
+    return () => unsub();
+  }, [currentUser?.id]);
+
+  // Subscribe to approved contracts for this client
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const unsub = subscribeToContractsByType('business-owner', (allContracts) => {
+      // Filter approved contracts for this client
+      const clientContracts = allContracts.filter(
+        c => c.userId === currentUser.id && c.approvalStatus === 'approved'
+      );
+      setContracts(clientContracts);
     });
     return () => unsub();
   }, [currentUser?.id]);
@@ -532,46 +547,92 @@ export default function ClientPortal() {
                   Support
                 </button>
               </div>
-              {jobs.length === 0 ? (
-                <p className="text-gray-400 text-sm">No jobs scheduled yet. Contact RESET to get started.</p>
-              ) : (
-                <div className="space-y-3">
-                  {jobs.map((job) => (
-                    <motion.div
-                      key={job.id}
-                      whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.1)' }}
-                      className="p-4 rounded border border-reset-green/20 hover:border-reset-green/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <h4 className="font-bold text-white text-sm">{job.type}</h4>
-                        <span className={`px-2 py-1 text-xs rounded border font-bold ${
-                          job.status === 'assigned' || job.status === 'in-progress'
-                            ? 'bg-reset-green/20 text-reset-green border-reset-green/30'
-                            : 'bg-gray-700/30 text-gray-300 border-gray-600/30'
-                        }`}>
-                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                        </span>
-                      </div>
-                      <div className="space-y-1 text-xs text-gray-400 mb-3">
-                        <div className="flex justify-between">
-                          <span>Scheduled:</span>
-                          <span className="text-gray-200">
-                            {job.scheduledDate instanceof Timestamp ? job.scheduledDate.toDate().toLocaleDateString('en-AU') : new Date(job.scheduledDate).toLocaleDateString('en-AU')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Duration:</span>
-                          <span className="text-gray-200">{job.duration} hours</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Location:</span>
-                          <span className="text-gray-200">{job.location}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+              <div className="space-y-6">
+                {/* Jobs Section */}
+                {jobs.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-white text-sm mb-3">Scheduled Jobs</h4>
+                    <div className="space-y-3">
+                      {jobs.map((job) => (
+                        <motion.div
+                          key={job.id}
+                          whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.1)' }}
+                          className="p-4 rounded border border-reset-green/20 hover:border-reset-green/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="font-bold text-white text-sm">{job.type}</h4>
+                            <span className={`px-2 py-1 text-xs rounded border font-bold ${
+                              job.status === 'assigned' || job.status === 'in-progress'
+                                ? 'bg-reset-green/20 text-reset-green border-reset-green/30'
+                                : 'bg-gray-700/30 text-gray-300 border-gray-600/30'
+                            }`}>
+                              {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                            </span>
+                          </div>
+                          <div className="space-y-1 text-xs text-gray-400 mb-3">
+                            <div className="flex justify-between">
+                              <span>Scheduled:</span>
+                              <span className="text-gray-200">
+                                {job.scheduledDate instanceof Timestamp ? job.scheduledDate.toDate().toLocaleDateString('en-AU') : new Date(job.scheduledDate).toLocaleDateString('en-AU')}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Duration:</span>
+                              <span className="text-gray-200">{job.duration} hours</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Location:</span>
+                              <span className="text-gray-200">{job.location}</span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Approved Contracts Section */}
+                {contracts.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-white text-sm mb-3">Active Contracts</h4>
+                    <div className="space-y-3">
+                      {contracts.map((contract) => (
+                        <motion.div
+                          key={contract.id}
+                          whileHover={{ backgroundColor: 'rgba(58, 158, 104, 0.1)' }}
+                          className="p-4 rounded border border-reset-green/20 hover:border-reset-green/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="font-bold text-white text-sm">{contract.company || 'Contract'}</h4>
+                            <span className="px-2 py-1 text-xs rounded border font-bold bg-reset-green/20 text-reset-green border-reset-green/30">
+                              Approved
+                            </span>
+                          </div>
+                          <div className="space-y-1 text-xs text-gray-400">
+                            <div className="flex justify-between">
+                              <span>Type:</span>
+                              <span className="text-gray-200">{contract.propertyType || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Frequency:</span>
+                              <span className="text-gray-200">{contract.cleaningFrequency || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Address:</span>
+                              <span className="text-gray-200 text-xs">{contract.address || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {jobs.length === 0 && contracts.length === 0 && (
+                  <p className="text-gray-400 text-sm">No jobs or contracts scheduled yet. Contact RESET to get started.</p>
+                )}
+              </div>
             </motion.div>
 
           </div>

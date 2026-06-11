@@ -11,6 +11,7 @@ import { uploadBeforeAfterPhoto } from '@/lib/storage';
 import { SupportModal } from '@/components/SupportModal';
 import { createTicket, generateTicketNumber } from '@/lib/db/tickets';
 import { subscribeToJobs, CleaningJob, updateJob, subscribeToJobsBySubcontractor } from '@/lib/db/jobs';
+import { subscribeToContractsByType, Contract } from '@/lib/db/contracts';
 
 interface Notification {
   id: string;
@@ -122,6 +123,7 @@ export default function SubcontractorPortal() {
   const [rescheduledOffers, setRescheduledOffers] = useState<number>(0);
   const [interestedJobs, setInterestedJobs] = useState<string[]>([]);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [approvedContracts, setApprovedContracts] = useState<Contract[]>([]);
 
   const [allFirestoreJobs, setAllFirestoreJobs] = useState<CleaningJob[]>([]);
 
@@ -134,7 +136,20 @@ export default function SubcontractorPortal() {
     return () => unsub();
   }, [currentUser?.id]);
 
-  const hasExtendedContracts = allFirestoreJobs.length > 0;
+  // Subscribe to approved contracts for this subcontractor
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const unsub = subscribeToContractsByType('subcontractor', (allContracts) => {
+      // Filter approved contracts for this subcontractor
+      const myContracts = allContracts.filter(
+        c => c.userId === currentUser.id && c.approvalStatus === 'approved'
+      );
+      setApprovedContracts(myContracts);
+    });
+    return () => unsub();
+  }, [currentUser?.id]);
+
+  const hasExtendedContracts = allFirestoreJobs.length > 0 || approvedContracts.length > 0;
 
   const upcomingJobs = allFirestoreJobs
     .filter(j => j.subcontractorId === currentUser?.id &&
@@ -575,10 +590,12 @@ export default function SubcontractorPortal() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {allFirestoreJobs.length === 0 ? (
-              <p className="text-gray-400 col-span-2">No jobs assigned yet. You'll see them here once work is assigned to you.</p>
+            {allFirestoreJobs.length === 0 && approvedContracts.length === 0 ? (
+              <p className="text-gray-400 col-span-2">No jobs or contracts assigned yet. You'll see them here once work is assigned to you.</p>
             ) : (
-              allFirestoreJobs.map((job) => (
+              <>
+                {/* Jobs */}
+                {allFirestoreJobs.map((job) => (
                 <div key={job.id}>
                   <button
                     onClick={() => handleViewContract(job.id)}
@@ -631,7 +648,50 @@ export default function SubcontractorPortal() {
                     </button>
                   )}
                 </div>
-              ))
+              ))}
+
+                {/* Approved Contracts */}
+                {approvedContracts.map((contract) => (
+                  <div key={contract.id}>
+                    <button
+                      onClick={() => {}}
+                      className="w-full p-6 rounded-lg border-2 border-reset-green/30 hover:border-reset-green/70 transition-all text-left group bg-reset-green/5 hover:bg-reset-green/10"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-bold text-white group-hover:text-reset-green transition-colors mb-1">
+                            {contract.firstName} {contract.lastName}
+                          </h3>
+                          <p className="text-sm text-reset-green font-bold">Active Contract</p>
+                        </div>
+                        <span className="px-3 py-1 rounded text-xs font-bold bg-reset-green/30 text-reset-green">
+                          Approved
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-sm text-gray-400 mb-4">
+                        <div className="flex items-center gap-2">
+                          <MapPin size={14} className="text-reset-green" />
+                          {contract.suburb || 'Service Area'}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <DollarSign size={14} className="text-reset-green" />
+                          ${contract.baseHourlyRate}/hour
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock size={14} className="text-reset-green" />
+                          {contract.weeklyAvailableHours || '0'} hours/week available
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <p><strong>Services:</strong> {contract.specializations || 'General cleaning'}</p>
+                        <p><strong>Equipment:</strong> {contract.equipmentOwned ? '✓ Equipped' : 'N/A'}</p>
+                      </div>
+                    </button>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         </motion.div>
