@@ -416,14 +416,14 @@ export default function UserManagement() {
                             setViewMode('edit');
                           }}
                           className="p-1 hover:bg-green-600/20 rounded transition-colors text-green-400"
-                          title="Edit User"
+                          aria-label="Edit User"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button
                           onClick={() => handleViewActivity(user.id)}
                           className="p-1 hover:bg-blue-600/20 rounded transition-colors text-blue-400"
-                          title="View Activity"
+                          aria-label="View Activity"
                         >
                           <Eye size={16} />
                         </button>
@@ -441,14 +441,14 @@ export default function UserManagement() {
                         <button
                           onClick={() => handleResetPassword(user.id)}
                           className="p-1 hover:bg-yellow-600/20 rounded transition-colors text-yellow-400"
-                          title="Reset Password"
+                          aria-label="Reset Password"
                         >
                           <RefreshCw size={16} />
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user.id)}
                           className="p-1 hover:bg-red-600/20 rounded transition-colors text-red-400"
-                          title="Delete User"
+                          aria-label="Delete User"
                         >
                           <Trash2 size={16} />
                         </button>

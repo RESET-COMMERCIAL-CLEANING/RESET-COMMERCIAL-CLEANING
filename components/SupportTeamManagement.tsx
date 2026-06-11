@@ -319,21 +319,21 @@ export default function SupportTeamManagement() {
                             setViewMode('edit');
                           }}
                           className="p-1 hover:bg-blue-600/20 rounded transition-colors text-blue-400 text-xs"
-                          title="Edit"
+                          aria-label="Edit"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button
                           onClick={() => handleViewActivity(member)}
                           className="p-1 hover:bg-purple-600/20 rounded transition-colors text-purple-400 text-xs"
-                          title="Activity"
+                          aria-label="Activity"
                         >
                           <Activity size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(member)}
                           className="p-1 hover:bg-red-600/20 rounded transition-colors text-red-400 text-xs"
-                          title="Delete"
+                          aria-label="Delete"
                         >
                           <Trash2 size={16} />
                         </button>

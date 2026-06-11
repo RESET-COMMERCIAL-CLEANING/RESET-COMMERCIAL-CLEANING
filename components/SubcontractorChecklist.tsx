@@ -182,8 +182,8 @@ export default function SubcontractorChecklist({ job, onUpdate }: SubcontractorC
                     )}
                   </div>
 
-                  <div className="flex-shrink-0 text-gray-400">
-                    {item.requiresPhotos && <Camera size={18} className="text-orange-400" title="Requires photos" />}
+                  <div className="flex-shrink-0 text-gray-400" title={item.requiresPhotos ? "Requires photos" : undefined}>
+                    {item.requiresPhotos && <Camera size={18} className="text-orange-400" />}
                   </div>
                 </button>
 
