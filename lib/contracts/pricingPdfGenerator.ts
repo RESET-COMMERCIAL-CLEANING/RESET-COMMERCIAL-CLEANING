@@ -270,6 +270,57 @@ export function generatePricingExplanationHTML(params: {
             </div>
           </div>
 
+          <div class="section">
+            <h2>Profit Margin Analysis (25-30%)</h2>
+            <div class="summary-box">
+              ${(() => {
+                const monthlyRate = pricing.monthlyRate;
+                const minMarginPercentage = 25;
+                const maxMarginPercentage = 30;
+
+                const minTotalCost = monthlyRate / (1 + (minMarginPercentage / 100));
+                const maxTotalCost = monthlyRate / (1 + (maxMarginPercentage / 100));
+
+                const minProfit = monthlyRate - minTotalCost;
+                const maxProfit = monthlyRate - maxTotalCost;
+
+                const minAnnualProfit = minProfit * 12;
+                const maxAnnualProfit = maxProfit * 12;
+
+                return `
+                  <div class="summary-row">
+                    <span class="summary-label">Monthly Charge:</span>
+                    <span class="summary-value">$${monthlyRate.toFixed(2)}</span>
+                  </div>
+                  <div class="summary-row">
+                    <span class="summary-label">Monthly Cost (25% margin):</span>
+                    <span class="summary-value">$${minTotalCost.toFixed(2)}</span>
+                  </div>
+                  <div class="summary-row">
+                    <span class="summary-label">Monthly Profit (25% margin):</span>
+                    <span class="summary-value" style="color: #10b981;">$${minProfit.toFixed(2)}</span>
+                  </div>
+                  <div class="summary-row" style="border-bottom: 1px solid #10b981;">
+                    <span class="summary-label">Annual Profit (25% margin):</span>
+                    <span class="summary-value" style="color: #10b981;">$${minAnnualProfit.toFixed(2)}</span>
+                  </div>
+                  <div class="summary-row">
+                    <span class="summary-label">Monthly Cost (30% margin):</span>
+                    <span class="summary-value">$${maxTotalCost.toFixed(2)}</span>
+                  </div>
+                  <div class="summary-row">
+                    <span class="summary-label">Monthly Profit (30% margin):</span>
+                    <span class="summary-value" style="color: #10b981;">$${maxProfit.toFixed(2)}</span>
+                  </div>
+                  <div class="summary-row total">
+                    <span class="summary-label">Annual Profit (30% margin):</span>
+                    <span class="summary-value" style="color: #10b981;">$${maxAnnualProfit.toFixed(2)}</span>
+                  </div>
+                `;
+              })()}
+            </div>
+          </div>
+
           <div class="notes">
             <strong>Note:</strong> This pricing is based on the RESET Cleaning Services pricing matrix as of ${new Date().getFullYear()}.
             Actual pricing may vary based on special requirements, market conditions, or agreed-upon adjustments.

@@ -221,7 +221,7 @@ function ClientSignupForm({ onBack }: { onBack: () => void }) {
       await createContract({
         userId: uid,
         contractType: 'business-owner',
-        status: 'active',
+        status: 'under-review',
         currentVersion: 1,
         company: formData.companyName,
         address: formData.address,
@@ -769,7 +769,7 @@ function SubcontractorSignupForm({ onBack }: { onBack: () => void }) {
       await createContract({
         userId: uid,
         contractType: 'subcontractor',
-        status: 'active',
+        status: 'under-review',
         currentVersion: 1,
         firstName,
         lastName: lastNameParts.join(' '),

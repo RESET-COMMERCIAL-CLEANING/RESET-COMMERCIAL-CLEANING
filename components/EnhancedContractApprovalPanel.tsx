@@ -9,6 +9,7 @@ import { uploadContractDocument } from '@/lib/storage';
 import { Toast, useToast } from '@/components/Toast';
 import { Timestamp } from 'firebase/firestore';
 import SignedContractUpload from '@/components/SignedContractUpload';
+import ContractApprovalChecklist from '@/components/ContractApprovalChecklist';
 import { generateBusinessOwnerContractHTML, generateSubcontractorContractHTML, getContractFilename } from '@/lib/contracts/contractGenerator';
 import { calculatePricing, type PricingCalculationInput } from '@/lib/pricing/pricingCalculator';
 import { downloadPricingPDF } from '@/lib/contracts/pricingPdfGenerator';
@@ -150,14 +151,43 @@ export default function EnhancedContractApprovalPanel({
       }
 
       setIsLoading(true);
-      await downloadPricingPDF({
+
+      // Generate pricing PDF
+      const pricingHtml = (await import('@/lib/contracts/pricingPdfGenerator')).generatePricingExplanationHTML({
         contract: editedContract,
         pricingInput,
         companyName: isBusinessOwner ? editedContract.company : `${editedContract.firstName} ${editedContract.lastName}`,
       });
-      addToast('Pricing PDF opened for printing', 'success');
+
+      // Create blob and upload to documents
+      const blob = new Blob([pricingHtml], { type: 'text/html' });
+      const file = new File([blob], `pricing-breakdown-v${editedContract.currentVersion}.html`, { type: 'text/html' });
+
+      const { uploadContractDocument } = await import('@/lib/storage');
+      const url = await uploadContractDocument(file, contract.id);
+
+      // Add to documents list
+      const newDoc: ContractDocument = {
+        id: Date.now().toString(),
+        name: `Pricing Breakdown v${editedContract.currentVersion}`,
+        url,
+        uploadedAt: Timestamp.now(),
+        uploadedBy: 'superuser',
+        documentType: 'generated',
+        version: editedContract.currentVersion,
+      };
+
+      setDocuments([...documents, newDoc]);
+      addToast('Pricing PDF saved to documents tab!', 'success');
+
+      // Also open for printing
+      const printWindow = window.open();
+      if (printWindow) {
+        printWindow.document.write(pricingHtml);
+        printWindow.document.close();
+      }
     } catch (error) {
-      console.error('Error downloading pricing PDF:', error);
+      console.error('Error generating pricing PDF:', error);
       addToast('Failed to generate pricing PDF', 'error');
     } finally {
       setIsLoading(false);
@@ -333,6 +363,9 @@ export default function EnhancedContractApprovalPanel({
               {activeTab === 'overview' && (
                 <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <div className="space-y-6">
+                    {/* Approval Checklist */}
+                    <ContractApprovalChecklist contract={contract} signedContractUrl={signedContractUrl} />
+
                     {/* Status */}
                     <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">
                       <div className="flex items-center justify-between mb-3">
@@ -659,7 +692,35 @@ export default function EnhancedContractApprovalPanel({
               {activeTab === 'assignment' && (
                 <motion.div key="assignment" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <div className="space-y-4">
-                    {!isBusinessOwner && (
+                    {/* Info: Assignment only for subcontractors and only after approval */}
+                    {isBusinessOwner && (
+                      <div className="p-4 bg-blue-900/20 border border-blue-600/30 rounded-lg">
+                        <p className="text-sm text-blue-300">
+                          <span className="font-semibold">Note:</span> Assignment happens after BOTH business owner and subcontractor contracts are approved.
+                        </p>
+                      </div>
+                    )}
+
+                    {!isBusinessOwner && contract.status !== 'approved' && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-4 bg-yellow-900/20 border border-yellow-600/30 rounded-lg"
+                      >
+                        <p className="text-sm text-yellow-300 font-semibold mb-2">⏳ Assignment Pending Approval</p>
+                        <p className="text-sm text-yellow-200">
+                          This contract must be approved before assignment. Complete all steps:
+                        </p>
+                        <ol className="text-sm text-yellow-200 mt-2 ml-4 list-decimal space-y-1">
+                          <li>Generate contract PDF</li>
+                          <li>Review pricing with profit margins</li>
+                          <li>Upload signed contract</li>
+                          <li>Approve contract</li>
+                        </ol>
+                      </motion.div>
+                    )}
+
+                    {!isBusinessOwner && contract.status === 'approved' && (
                       <>
                         {contract.currentAssignedSubcontractor && (
                           <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">

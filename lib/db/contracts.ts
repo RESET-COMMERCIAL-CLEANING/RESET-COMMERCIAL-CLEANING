@@ -60,7 +60,7 @@ export interface Contract {
   id: string;
   userId: string;                       // business owner or subcontractor ID
   contractType: 'business-owner' | 'subcontractor';
-  status: 'draft' | 'generated' | 'awaiting-signature' | 'signed' | 'ready-for-approval' | 'approved' | 'rejected' | 'active' | 'inactive';
+  status: 'under-review' | 'generated' | 'awaiting-signature' | 'signed' | 'ready-for-approval' | 'approved' | 'rejected' | 'active' | 'inactive' | 'draft';
   createdAt: Timestamp;
   updatedAt?: Timestamp;
   submittedAt?: Timestamp;
