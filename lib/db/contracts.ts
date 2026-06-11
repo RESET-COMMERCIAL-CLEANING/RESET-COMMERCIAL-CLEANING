@@ -11,6 +11,7 @@ import {
   onSnapshot,
   query,
   where,
+  arrayUnion,
 } from 'firebase/firestore';
 
 export interface ContractDocument {
@@ -28,19 +29,43 @@ export interface ContractApprovalHistory {
   notes?: string;
 }
 
+export interface ContractAssignment {
+  subcontractorId: string;
+  subcontractorName: string;
+  assignedAt: Timestamp;
+  assignedBy: string;
+  previousSubcontractorId?: string;
+  reassignmentReason?: string;
+}
+
 export interface Contract {
   id: string;
   userId: string;                       // business owner or subcontractor ID
   contractType: 'business-owner' | 'subcontractor';
   status: 'draft' | 'submitted' | 'under-review' | 'approved' | 'rejected' | 'active' | 'inactive';
   approvalStatus?: 'submitted' | 'under-review' | 'approved' | 'rejected';
+  signingStatus?: 'unsigned' | 'sent-for-signature' | 'signed' | 'executed';
   createdAt: Timestamp;
   updatedAt?: Timestamp;
   submittedAt?: Timestamp;
   approvedAt?: Timestamp;
+  signedAt?: Timestamp;
   documents?: ContractDocument[];
   approvalHistory?: ContractApprovalHistory[];
   approvalNotes?: string;
+
+  // Contract generation
+  contractPdfUrl?: string;
+  contractTemplate?: string;
+
+  // Pricing information
+  estimatedMonthlyPrice?: number;
+  estimatedAnnualPrice?: number;
+  pricingTier?: 'budget' | 'standard' | 'premium';
+
+  // Assignment tracking
+  assignments?: ContractAssignment[];
+  currentAssignedSubcontractor?: ContractAssignment;
 
   // --- Business Owner Contract (signup data) ---
   company?: string;
@@ -156,5 +181,81 @@ export const subscribeToContractsByType = (
       id: doc.id,
     }));
     callback(contracts);
+  });
+};
+
+// Mark contract as sent for signature
+export const markContractForSignature = async (
+  contractId: string,
+  pdfUrl: string
+): Promise<void> => {
+  const docRef = doc(contractsCollection, contractId);
+  await updateDoc(docRef, {
+    signingStatus: 'sent-for-signature',
+    contractPdfUrl: pdfUrl,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+// Mark contract as signed
+export const markContractAsSigned = async (contractId: string): Promise<void> => {
+  const docRef = doc(contractsCollection, contractId);
+  await updateDoc(docRef, {
+    signingStatus: 'signed',
+    signedAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+};
+
+// Assign contract to subcontractor
+export const assignContractToSubcontractor = async (
+  contractId: string,
+  subcontractorId: string,
+  subcontractorName: string,
+  assignedBy: string,
+  previousSubcontractorId?: string,
+  reassignmentReason?: string
+): Promise<void> => {
+  const docRef = doc(contractsCollection, contractId);
+  const newAssignment: ContractAssignment = {
+    subcontractorId,
+    subcontractorName,
+    assignedAt: Timestamp.now(),
+    assignedBy,
+    previousSubcontractorId,
+    reassignmentReason,
+  };
+
+  await updateDoc(docRef, {
+    currentAssignedSubcontractor: newAssignment,
+    assignments: arrayUnion(newAssignment),
+    updatedAt: Timestamp.now(),
+  });
+};
+
+// Get assignments for a contract
+export const getContractAssignments = async (
+  contractId: string
+): Promise<ContractAssignment[]> => {
+  const docRef = doc(contractsCollection, contractId);
+  const docSnap = await getDoc(docRef);
+  if (!docSnap.exists()) return [];
+  const contract = docSnap.data() as Contract;
+  return contract.assignments || [];
+};
+
+// Update contract with pricing information
+export const updateContractPricing = async (
+  contractId: string,
+  monthlyPrice: number,
+  annualPrice: number,
+  pricingTier: 'budget' | 'standard' | 'premium'
+): Promise<void> => {
+  const docRef = doc(contractsCollection, contractId);
+  await updateDoc(docRef, {
+    estimatedMonthlyPrice: monthlyPrice,
+    estimatedAnnualPrice: annualPrice,
+    pricingTier,
+    updatedAt: Timestamp.now(),
   });
 };
