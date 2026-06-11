@@ -142,7 +142,7 @@ export default function SubcontractorPortal() {
     const unsub = subscribeToContractsByType('subcontractor', (allContracts) => {
       // Filter approved contracts for this subcontractor
       const myContracts = allContracts.filter(
-        c => c.userId === currentUser.id && c.approvalStatus === 'approved'
+        c => c.userId === currentUser.id && c.status === 'approved'
       );
       setApprovedContracts(myContracts);
     });

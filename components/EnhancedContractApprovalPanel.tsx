@@ -1,16 +1,17 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileText, CheckCircle, XCircle, Calendar, User, Upload, Trash2, Clock, Edit2, Save, Eye, Send, Users, Download } from 'lucide-react';
+import { X, FileText, CheckCircle, XCircle, Calendar, User, Upload, Trash2, Clock, Edit2, Save, Eye, Send, Users, Download, FileCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Contract, ContractDocument } from '@/lib/db/contracts';
 import { updateContract, markContractForSignature, markContractAsSigned, assignContractToSubcontractor } from '@/lib/db/contracts';
 import { uploadContractDocument } from '@/lib/storage';
 import { Toast, useToast } from '@/components/Toast';
 import { Timestamp } from 'firebase/firestore';
-import DigitalSignaturePad from '@/components/DigitalSignaturePad';
+import SignedContractUpload from '@/components/SignedContractUpload';
 import { generateBusinessOwnerContractHTML, generateSubcontractorContractHTML, getContractFilename } from '@/lib/contracts/contractGenerator';
 import { calculatePricing, type PricingCalculationInput } from '@/lib/pricing/pricingCalculator';
+import { downloadPricingPDF } from '@/lib/contracts/pricingPdfGenerator';
 
 interface EnhancedContractApprovalPanelProps {
   contract: Contract;
@@ -19,7 +20,7 @@ interface EnhancedContractApprovalPanelProps {
   subcontractors?: Array<{ id: string; name: string }>;
 }
 
-type TabType = 'overview' | 'edit' | 'pricing' | 'contract' | 'signature' | 'assignment' | 'documents';
+type TabType = 'overview' | 'edit' | 'pricing' | 'contract' | 'sign-upload' | 'assignment' | 'documents';
 
 export default function EnhancedContractApprovalPanel({
   contract,
@@ -35,8 +36,7 @@ export default function EnhancedContractApprovalPanel({
   const [documents, setDocuments] = useState<ContractDocument[]>(contract.documents || []);
   const [approvalNotes, setApprovalNotes] = useState(contract.approvalNotes || '');
   const [contractPreview, setContractPreview] = useState<string>('');
-  const [showSignature, setShowSignature] = useState(false);
-  const [signatureData, setSignatureData] = useState<string>('');
+  const [signedContractUrl, setSignedContractUrl] = useState<string>('');
   const [selectedSubcontractor, setSelectedSubcontractor] = useState<string>('');
   const [reassignmentReason, setReassignmentReason] = useState('');
 
@@ -122,21 +122,63 @@ export default function EnhancedContractApprovalPanel({
     addToast('Contract downloaded!', 'success');
   };
 
-  const handleSignatureCapture = async (signatureData: string) => {
+  const handleSignedContractUpload = async (url: string) => {
     setIsLoading(true);
     try {
-      // Store signature data
-      setSignatureData(signatureData);
+      setSignedContractUrl(url);
 
-      // Mark contract as signed
-      await markContractAsSigned(contract.id);
+      // Update contract status to 'signed'
+      await updateContract(contract.id, {
+        status: 'signed',
+        updatedAt: Timestamp.now(),
+      });
 
-      addToast('Contract signed successfully!', 'success');
-      setShowSignature(false);
-      setActiveTab('assignment');
+      addToast('Signed contract uploaded successfully!', 'success');
     } catch (error) {
-      console.error('Error saving signature:', error);
-      addToast('Failed to save signature', 'error');
+      console.error('Error saving signed contract:', error);
+      addToast('Failed to save signed contract', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownloadPricingPDF = async () => {
+    try {
+      if (!pricingInput) {
+        addToast('Pricing calculation not available for this contract type', 'error');
+        return;
+      }
+
+      setIsLoading(true);
+      await downloadPricingPDF({
+        contract: editedContract,
+        pricingInput,
+        companyName: isBusinessOwner ? editedContract.company : `${editedContract.firstName} ${editedContract.lastName}`,
+      });
+      addToast('Pricing PDF opened for printing', 'success');
+    } catch (error) {
+      console.error('Error downloading pricing PDF:', error);
+      addToast('Failed to generate pricing PDF', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleApproveContract = async () => {
+    setIsLoading(true);
+    try {
+      await updateContract(contract.id, {
+        status: 'approved',
+        approvalNotes,
+        approvedAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+
+      addToast('Contract approved successfully!', 'success');
+      onApproval();
+    } catch (error) {
+      console.error('Error approving contract:', error);
+      addToast('Failed to approve contract', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -193,6 +235,8 @@ export default function EnhancedContractApprovalPanel({
         url,
         uploadedAt: Timestamp.now(),
         uploadedBy: 'superuser',
+        documentType: 'supporting',
+        version: 1,
       };
       setDocuments([...documents, newDoc]);
       addToast(`Document "${file.name}" uploaded successfully!`, 'success');
@@ -266,7 +310,7 @@ export default function EnhancedContractApprovalPanel({
           {/* Tabs */}
           <div className="border-b border-gray-700 px-6 overflow-x-auto">
             <div className="flex gap-1 min-w-max">
-              {(['overview', 'edit', 'pricing', 'contract', 'signature', 'assignment', 'documents'] as const).map((tab) => (
+              {(['overview', 'edit', 'pricing', 'contract', 'sign-upload', 'assignment', 'documents'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -276,7 +320,7 @@ export default function EnhancedContractApprovalPanel({
                       : 'text-gray-400 border-transparent hover:text-gray-300'
                   }`}
                 >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab === 'sign-upload' ? 'Sign & Upload' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
             </div>
@@ -293,8 +337,8 @@ export default function EnhancedContractApprovalPanel({
                     <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-bold text-white">Status</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(contract.approvalStatus)}`}>
-                          {contract.approvalStatus?.charAt(0).toUpperCase() + contract.approvalStatus?.slice(1) || 'Draft'}
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(contract.status)}`}>
+                          {contract.status?.charAt(0).toUpperCase() + contract.status?.slice(1) || 'Draft'}
                         </span>
                       </div>
                       <div className="space-y-2 text-sm text-gray-400">
@@ -302,12 +346,10 @@ export default function EnhancedContractApprovalPanel({
                           <Calendar size={14} className="text-reset-green" />
                           Submitted: {contract.submittedAt ? new Date(contract.submittedAt.toDate()).toLocaleDateString('en-AU') : 'Not submitted'}
                         </div>
-                        {contract.signingStatus && (
-                          <div className="flex items-center gap-2">
-                            <FileText size={14} className="text-reset-green" />
-                            Signing Status: {contract.signingStatus}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <FileText size={14} className="text-reset-green" />
+                          Status: {contract.status.charAt(0).toUpperCase() + contract.status.slice(1).replace('-', ' ')}
+                        </div>
                         {contract.approvedAt && (
                           <div className="flex items-center gap-2">
                             <CheckCircle size={14} className="text-reset-green" />
@@ -317,27 +359,49 @@ export default function EnhancedContractApprovalPanel({
                       </div>
                     </div>
 
-                    {/* Contract Details */}
+                    {/* Contract Details - ALL Fields */}
                     <div>
-                      <h3 className="font-bold text-white mb-4">Contract Details</h3>
+                      <h3 className="font-bold text-white mb-4">Complete Contract Information</h3>
                       <div className="grid grid-cols-2 gap-4">
                         {isBusinessOwner ? (
                           <>
                             <DetailItem label="Company" value={editedContract.company || 'N/A'} />
                             <DetailItem label="Contact Name" value={editedContract.primaryContactName || 'N/A'} />
-                            <DetailItem label="Phone" value={editedContract.primaryContactPhone || 'N/A'} />
+                            <DetailItem label="Contact Phone" value={editedContract.primaryContactPhone || 'N/A'} />
                             <DetailItem label="Address" value={editedContract.address || 'N/A'} />
                             <DetailItem label="Property Type" value={editedContract.propertyType || 'N/A'} />
+                            <DetailItem label="Property Floors" value={editedContract.propertyFloors?.toString() || 'N/A'} />
+                            <DetailItem label="Company Size" value={editedContract.companySize || 'N/A'} />
                             <DetailItem label="Cleaning Frequency" value={editedContract.cleaningFrequency || 'N/A'} />
+                            <DetailItem label="Preferred Time" value={editedContract.preferredTime || 'N/A'} />
+                            <DetailItem label="Service Types" value={editedContract.serviceTypes || 'N/A'} />
+                            <DetailItem label="Special Requirements" value={editedContract.specialRequirements || 'N/A'} />
+                            <DetailItem label="Focus Areas" value={editedContract.focusAreas || 'N/A'} />
+                            <DetailItem label="Estimated Budget" value={editedContract.estimatedBudget || 'N/A'} />
+                            <DetailItem label="Billing Preference" value={editedContract.billingPreference || 'N/A'} />
+                            <DetailItem label="Access Requirements" value={editedContract.accessRequirements || 'N/A'} />
                           </>
                         ) : (
                           <>
-                            <DetailItem label="Name" value={`${editedContract.firstName} ${editedContract.lastName}`} />
+                            <DetailItem label="First Name" value={editedContract.firstName || 'N/A'} />
+                            <DetailItem label="Last Name" value={editedContract.lastName || 'N/A'} />
                             <DetailItem label="Email" value={editedContract.email || 'N/A'} />
                             <DetailItem label="Phone" value={editedContract.phone || 'N/A'} />
-                            <DetailItem label="Service Area" value={editedContract.suburb || 'N/A'} />
-                            <DetailItem label="Hourly Rate" value={`$${editedContract.baseHourlyRate || 'TBD'}/hr`} />
+                            <DetailItem label="Suburb" value={editedContract.suburb || 'N/A'} />
+                            <DetailItem label="Service Area (km)" value={editedContract.serviceAreaKm?.toString() || 'N/A'} />
+                            <DetailItem label="Preferred Shifts" value={editedContract.preferredShifts || 'N/A'} />
+                            <DetailItem label="Specializations" value={editedContract.specializations || 'N/A'} />
+                            <DetailItem label="Equipment Owned" value={editedContract.equipmentOwned || 'N/A'} />
                             <DetailItem label="ABN" value={editedContract.abn || 'N/A'} />
+                            <DetailItem label="Public Liability" value={editedContract.hasPublicLiability ? 'Yes' : 'No'} />
+                            <DetailItem label="Liability Expiry" value={editedContract.liabilityInsuranceExpiry || 'N/A'} />
+                            <DetailItem label="Liability Policy #" value={editedContract.liabilityPolicyNumber || 'N/A'} />
+                            <DetailItem label="Police Check" value={editedContract.hasPoliceCheck ? 'Yes' : 'No'} />
+                            <DetailItem label="Police Check Expiry" value={editedContract.policeCheckExpiry || 'N/A'} />
+                            <DetailItem label="Base Hourly Rate" value={editedContract.baseHourlyRate ? `$${editedContract.baseHourlyRate}/hr` : 'N/A'} />
+                            <DetailItem label="Weekly Available Hours" value={editedContract.weeklyAvailableHours?.toString() || 'N/A'} />
+                            <DetailItem label="References" value={editedContract.references || 'N/A'} />
+                            <DetailItem label="Eco-Friendly Capable" value={editedContract.ecoFriendlyCapable ? 'Yes' : 'No'} />
                           </>
                         )}
                       </div>
@@ -454,6 +518,15 @@ export default function EnhancedContractApprovalPanel({
                 <motion.div key="pricing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   {pricing ? (
                     <div className="space-y-4">
+                      <button
+                        onClick={handleDownloadPricingPDF}
+                        disabled={isLoading}
+                        className="w-full px-4 py-3 bg-reset-green text-black rounded-lg hover:bg-reset-green/80 transition-colors font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        <Download size={18} />
+                        {isLoading ? 'Generating PDF...' : 'Download Pricing Explanation (PDF)'}
+                      </button>
+
                       <div className="grid grid-cols-3 gap-4">
                         <div className="p-4 bg-reset-green/10 rounded-lg border border-reset-green/30">
                           <p className="text-gray-400 text-sm mb-1">Monthly Rate</p>
@@ -526,11 +599,11 @@ export default function EnhancedContractApprovalPanel({
                             Download
                           </button>
                           <button
-                            onClick={() => setShowSignature(true)}
+                            onClick={() => setActiveTab('sign-upload')}
                             className="flex-1 px-4 py-2 bg-reset-green text-black rounded hover:bg-reset-green/80 transition-colors font-semibold flex items-center justify-center gap-2"
                           >
                             <FileText size={16} />
-                            Sign Document
+                            Sign & Upload
                           </button>
                         </div>
                         <div className="bg-gray-900/50 rounded-lg border border-gray-700/50 p-4 max-h-96 overflow-y-auto">
@@ -546,45 +619,39 @@ export default function EnhancedContractApprovalPanel({
                 </motion.div>
               )}
 
-              {/* Signature Tab */}
-              {activeTab === 'signature' && (
-                <motion.div key="signature" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  {showSignature ? (
-                    <DigitalSignaturePad
-                      onSignatureCapture={handleSignatureCapture}
-                      label={`Sign as ${getContractName()}`}
-                      isLoading={isLoading}
-                    />
-                  ) : (
-                    <div className="space-y-4">
-                      {contract.signingStatus === 'signed' ? (
-                        <div className="p-4 bg-reset-green/20 border border-reset-green/30 rounded-lg">
-                          <div className="flex items-center gap-2 mb-2">
-                            <CheckCircle className="w-5 h-5 text-reset-green" />
-                            <span className="font-bold text-reset-green">Contract Signed</span>
+              {/* Sign & Upload Tab */}
+              {activeTab === 'sign-upload' && (
+                <motion.div key="sign-upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="space-y-6">
+                    {signedContractUrl ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="p-4 bg-reset-green/20 border border-reset-green/30 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileCheck className="w-6 h-6 text-reset-green flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="font-bold text-reset-green">Signed Contract Uploaded</p>
+                            <p className="text-sm text-gray-300 mt-1">
+                              The signed contract has been received and saved. This contract is now ready for final approval.
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-300">
-                            Signed on {contract.signedAt ? new Date(contract.signedAt.toDate()).toLocaleDateString('en-AU') : 'Unknown date'}
-                          </p>
                         </div>
-                      ) : (
-                        <>
-                          <p className="text-gray-400 text-sm">
-                            Generate and review the contract document first, then sign it digitally below.
-                          </p>
-                          {contractPreview && (
-                            <button
-                              onClick={() => setShowSignature(true)}
-                              className="w-full px-4 py-3 bg-reset-green text-black rounded-lg hover:bg-reset-green/80 transition-colors font-semibold flex items-center justify-center gap-2"
-                            >
-                              <FileText size={18} />
-                              Sign Contract
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
+                      </motion.div>
+                    ) : (
+                      <>
+                        <p className="text-gray-400 text-sm">
+                          Step 1: Download the contract PDF from the "Contract" tab, have it signed externally (print & sign, e-signature, etc.), then upload the signed copy below.
+                        </p>
+                        <SignedContractUpload
+                          contractId={contract.id}
+                          onUploadComplete={handleSignedContractUpload}
+                          currentSignedDocument={signedContractUrl}
+                        />
+                      </>
+                    )}
+                  </div>
                 </motion.div>
               )}
 
@@ -730,19 +797,36 @@ export default function EnhancedContractApprovalPanel({
 
           {/* Footer */}
           <div className="border-t border-gray-700/50 p-6 bg-black/50">
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="flex-1 px-4 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors font-semibold"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => setActiveTab('overview')}
-                className="flex-1 px-4 py-3 bg-reset-green/20 text-reset-green border border-reset-green/30 rounded-lg hover:bg-reset-green/30 transition-colors font-semibold"
-              >
-                Back to Overview
-              </button>
+            <div className="space-y-3">
+              {/* Approval Notes */}
+              {signedContractUrl && contract.status !== 'approved' && (
+                <textarea
+                  placeholder="Add approval notes (optional)..."
+                  value={approvalNotes}
+                  onChange={(e) => setApprovalNotes(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-reset-green resize-none h-20"
+                />
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="flex-1 px-4 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-800/50 transition-colors font-semibold"
+                >
+                  Close
+                </button>
+
+                {signedContractUrl && contract.status !== 'approved' && (
+                  <button
+                    onClick={handleApproveContract}
+                    disabled={isLoading}
+                    className="flex-1 px-4 py-3 bg-reset-green text-black rounded-lg hover:bg-reset-green/80 transition-colors font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={18} />
+                    {isLoading ? 'Approving...' : 'Approve Contract'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>

@@ -251,5 +251,5 @@ export async function createRecurringJobs(params: {
  */
 export function shouldAutoCreateJobs(contract: Contract): boolean {
   // Auto-create if contract is approved and not already created
-  return contract.approvalStatus === 'approved' && !contract.currentAssignedSubcontractor?.subcontractorId;
+  return contract.status === 'approved' && !contract.currentAssignedSubcontractor?.subcontractorId;
 }

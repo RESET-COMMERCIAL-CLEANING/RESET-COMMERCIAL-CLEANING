@@ -121,7 +121,7 @@ export default function ClientPortal() {
     const unsub = subscribeToContractsByType('business-owner', (allContracts) => {
       // Filter approved contracts for this client
       const clientContracts = allContracts.filter(
-        c => c.userId === currentUser.id && c.approvalStatus === 'approved'
+        c => c.userId === currentUser.id && c.status === 'approved'
       );
       setContracts(clientContracts);
     });

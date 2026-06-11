@@ -20,10 +20,28 @@ export interface ContractDocument {
   url: string;
   uploadedAt: Timestamp;
   uploadedBy: string;
+  documentType: 'generated' | 'signed' | 'supporting';
+  version: number;
+}
+
+export interface ContractVersion {
+  version: number;
+  generatedAt: Timestamp;
+  generatedBy: string;
+  pricingSnapshot?: {
+    monthlyPrice: number;
+    annualPrice: number;
+    pricingTier: string;
+    breakdown: string; // JSON of pricing breakdown
+  };
+  signedDocumentUrl?: string;
+  signedAt?: Timestamp;
+  signedBy?: string;
+  changes?: string; // Description of changes made
 }
 
 export interface ContractApprovalHistory {
-  status: 'submitted' | 'under-review' | 'approved' | 'rejected';
+  status: 'generated' | 'sent-for-signature' | 'signed' | 'ready-for-approval' | 'approved' | 'rejected';
   changedAt: Timestamp;
   changedBy: string;
   notes?: string;
@@ -42,28 +60,25 @@ export interface Contract {
   id: string;
   userId: string;                       // business owner or subcontractor ID
   contractType: 'business-owner' | 'subcontractor';
-  status: 'draft' | 'submitted' | 'under-review' | 'approved' | 'rejected' | 'active' | 'inactive';
-  approvalStatus?: 'submitted' | 'under-review' | 'approved' | 'rejected';
-  signingStatus?: 'unsigned' | 'sent-for-signature' | 'signed' | 'executed';
+  status: 'draft' | 'generated' | 'awaiting-signature' | 'signed' | 'ready-for-approval' | 'approved' | 'rejected' | 'active' | 'inactive';
   createdAt: Timestamp;
   updatedAt?: Timestamp;
   submittedAt?: Timestamp;
   approvedAt?: Timestamp;
-  signedAt?: Timestamp;
+
+  // Contract versioning
+  currentVersion: number;
+  versions?: ContractVersion[];
   documents?: ContractDocument[];
   approvalHistory?: ContractApprovalHistory[];
   approvalNotes?: string;
-
-  // Contract generation
-  contractPdfUrl?: string;
-  contractTemplate?: string;
 
   // Pricing information
   estimatedMonthlyPrice?: number;
   estimatedAnnualPrice?: number;
   pricingTier?: 'budget' | 'standard' | 'premium';
 
-  // Assignment tracking
+  // Assignment tracking (only for subcontractor contracts)
   assignments?: ContractAssignment[];
   currentAssignedSubcontractor?: ContractAssignment;
 

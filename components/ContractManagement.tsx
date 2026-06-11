@@ -56,7 +56,7 @@ export default function ContractManagement() {
   const contractsToShow = activeTab === 'business-owner' ? businessOwnerContracts : subcontractorContracts;
   const filteredContracts = contractsToShow.filter(c => {
     const query = searchQuery.toLowerCase();
-    const statusMatch = filterStatus === 'all' || c.approvalStatus === filterStatus;
+    const statusMatch = filterStatus === 'all' || c.status === filterStatus;
 
     if (activeTab === 'business-owner') {
       const nameMatch = !query || (c.company?.toLowerCase().includes(query) || c.primaryContactName?.toLowerCase().includes(query));
@@ -253,25 +253,25 @@ export default function ContractManagement() {
                         {contract.status === 'active' && <CheckCircle size={12} />}
                         {contract.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
-                      {contract.approvalStatus && (
+                      {contract.status && (
                         <span className={`text-xs px-3 py-1 rounded font-bold flex items-center gap-1 ${
-                          contract.approvalStatus === 'approved'
+                          contract.status === 'approved'
                             ? 'bg-reset-green/20 text-reset-green'
-                            : contract.approvalStatus === 'rejected'
+                            : contract.status === 'rejected'
                             ? 'bg-red-500/20 text-red-400'
-                            : contract.approvalStatus === 'under-review'
+                            : ['generated', 'awaiting-signature', 'signed', 'ready-for-approval'].includes(contract.status)
                             ? 'bg-yellow-500/20 text-yellow-400'
                             : 'bg-blue-500/20 text-blue-400'
                         }`}>
-                          {contract.approvalStatus === 'approved' && <CheckCircle size={12} />}
-                          {contract.approvalStatus === 'rejected' && <XCircle size={12} />}
-                          {contract.approvalStatus === 'under-review' && <Clock size={12} />}
-                          {contract.approvalStatus.charAt(0).toUpperCase() + contract.approvalStatus.slice(1).replace('-', ' ')}
+                          {contract.status === 'approved' && <CheckCircle size={12} />}
+                          {contract.status === 'rejected' && <XCircle size={12} />}
+                          {['generated', 'awaiting-signature', 'signed', 'ready-for-approval'].includes(contract.status) && <Clock size={12} />}
+                          {contract.status.charAt(0).toUpperCase() + contract.status.slice(1).replace('-', ' ')}
                         </span>
                       )}
                     </div>
                   </div>
-                  {contract.approvalStatus !== 'approved' && (
+                  {contract.status !== 'approved' && (
                     <button
                       onClick={() => setSelectedContract(contract)}
                       className="w-full px-3 py-2 text-xs bg-reset-green/20 text-reset-green border border-reset-green/30 rounded hover:bg-reset-green/30 transition-colors font-semibold"

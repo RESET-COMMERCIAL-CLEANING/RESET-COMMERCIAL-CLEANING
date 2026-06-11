@@ -35,6 +35,8 @@ export default function ContractApprovalPanel({ contract, onClose, onApproval }:
         url,
         uploadedAt: Timestamp.now(),
         uploadedBy: 'superuser',
+        documentType: 'supporting',
+        version: 1,
       };
       setDocuments([...documents, newDoc]);
       addToast(`Document "${file.name}" uploaded successfully!`, 'success');
@@ -55,7 +57,6 @@ export default function ContractApprovalPanel({ contract, onClose, onApproval }:
     setIsLoading(true);
     try {
       await updateContract(contract.id, {
-        approvalStatus: 'approved',
         status: 'approved',
         documents,
         approvalNotes: notes,
@@ -84,7 +85,6 @@ export default function ContractApprovalPanel({ contract, onClose, onApproval }:
     setIsLoading(true);
     try {
       await updateContract(contract.id, {
-        approvalStatus: 'rejected',
         status: 'rejected',
         documents,
         approvalNotes: notes,
@@ -168,8 +168,8 @@ export default function ContractApprovalPanel({ contract, onClose, onApproval }:
             <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-white">Status</h3>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusBadgeColor(contract.approvalStatus)}`}>
-                  {contract.approvalStatus?.charAt(0).toUpperCase() + contract.approvalStatus?.slice(1) || 'Draft'}
+                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusBadgeColor(contract.status)}`}>
+                  {contract.status?.charAt(0).toUpperCase() + contract.status?.slice(1) || 'Draft'}
                 </span>
               </div>
               <div className="space-y-2 text-sm text-gray-400">
@@ -320,7 +320,7 @@ export default function ContractApprovalPanel({ contract, onClose, onApproval }:
             )}
 
             {/* Action Buttons */}
-            {!contract.approvalStatus || contract.approvalStatus !== 'approved' ? (
+            {!contract.status || contract.status !== 'approved' ? (
               <div className="flex gap-3 pt-4 border-t border-gray-700/50">
                 <button
                   onClick={onClose}

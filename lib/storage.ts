@@ -67,3 +67,12 @@ export const uploadContractDocument = async (file: File, contractId: string): Pr
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
 };
+
+export const uploadSignedContract = async (contractId: string, file: File): Promise<string> => {
+  const timestamp = Date.now();
+  const fileExtension = file.name.split('.').pop();
+  const storageRef = ref(storage, `signed-contracts/${contractId}/${timestamp}-signed.${fileExtension}`);
+
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
