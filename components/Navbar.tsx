@@ -273,7 +273,7 @@ export function Navbar() {
             <button
               ref={profileButtonRef}
               onClick={() => setShowProfilePanel(!showProfilePanel)}
-              className="px-2 md:px-4 py-2 rounded-lg bg-reset-green/20 hover:bg-reset-green/30 transition-all duration-300 flex items-center gap-2 text-white font-semibold"
+              className="px-2 md:px-4 py-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all duration-300 flex items-center gap-2 text-white font-semibold"
             >
               <img
                 src={loggedInUser?.avatar || profile.avatar}
@@ -291,7 +291,7 @@ export function Navbar() {
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 md:right-0 left-auto md:left-auto top-full mt-2 w-72 md:w-80 bg-gray-950 border-2 border-reset-green/50 rounded-lg shadow-2xl z-50 p-6"
+                  className="absolute right-0 md:right-0 left-auto md:left-auto top-full mt-2 w-72 md:w-80 bg-gray-950 border-2 border-gray-700 rounded-lg z-50 p-6"
                   style={{
                     backdropFilter: 'blur(10px)',
                     backgroundColor: 'rgba(3, 7, 18, 0.95)',
@@ -389,7 +389,14 @@ export function Navbar() {
                   ) : (
                     <>
                       {/* Edit Profile Form */}
-                      <h3 className="text-lg font-bold text-white mb-6">Edit Profile</h3>
+                      <div className="text-center mb-6">
+                        <img
+                          src={editProfile.avatar || loggedInUser?.avatar || profile.avatar}
+                          alt={editProfile.name || loggedInUser?.name || profile.name}
+                          className="w-16 h-16 rounded-lg object-cover border-2 border-gray-400 mx-auto mb-3"
+                        />
+                        <h3 className="text-lg font-bold text-white">Edit Profile</h3>
+                      </div>
                       <div className="space-y-3 max-h-80 overflow-y-auto">
                         <div>
                           <label className="block text-xs text-gray-400 mb-1 font-bold">Name</label>
