@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileText, CheckCircle, XCircle, Calendar, User, Upload, Trash2, Clock, Edit2, Save, Eye, Send, Users } from 'lucide-react';
+import { X, FileText, CheckCircle, XCircle, Calendar, User, Upload, Trash2, Clock, Edit2, Save, Eye, Send, Users, Download } from 'lucide-react';
 import { useState } from 'react';
 import { Contract, ContractDocument } from '@/lib/db/contracts';
 import { updateContract, markContractForSignature, markContractAsSigned, assignContractToSubcontractor } from '@/lib/db/contracts';
