@@ -1,10 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { Search, Building2, Users, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Building2, Users, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { subscribeToContractsByType, Contract } from '@/lib/db/contracts';
 import { Toast, useToast } from '@/components/Toast';
+import ContractApprovalPanel from '@/components/ContractApprovalPanel';
 
 export default function ContractManagement() {
   const { toasts, addToast, removeToast } = useToast();
@@ -12,6 +13,8 @@ export default function ContractManagement() {
   const [subcontractorContracts, setSubcontractorContracts] = useState<Contract[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'business-owner' | 'subcontractor'>('business-owner');
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'submitted' | 'under-review' | 'approved' | 'rejected'>('all');
 
   useEffect(() => {
     const unsub1 = subscribeToContractsByType('business-owner', setBusinessOwnerContracts);
@@ -25,11 +28,15 @@ export default function ContractManagement() {
   const contractsToShow = activeTab === 'business-owner' ? businessOwnerContracts : subcontractorContracts;
   const filteredContracts = contractsToShow.filter(c => {
     const query = searchQuery.toLowerCase();
+    const statusMatch = filterStatus === 'all' || c.approvalStatus === filterStatus;
+
     if (activeTab === 'business-owner') {
-      return !query || (c.company?.toLowerCase().includes(query) || c.primaryContactName?.toLowerCase().includes(query));
+      const nameMatch = !query || (c.company?.toLowerCase().includes(query) || c.primaryContactName?.toLowerCase().includes(query));
+      return statusMatch && nameMatch;
     } else {
       const fullName = `${c.firstName || ''} ${c.lastName || ''}`.toLowerCase();
-      return !query || fullName.includes(query) || c.suburb?.toLowerCase().includes(query);
+      const nameMatch = !query || fullName.includes(query) || c.suburb?.toLowerCase().includes(query);
+      return statusMatch && nameMatch;
     }
   });
 
@@ -70,16 +77,35 @@ export default function ContractManagement() {
             </button>
           </div>
 
-          {/* Search */}
-          <div className="relative mb-6">
-            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
-            <input
-              type="text"
-              placeholder={activeTab === 'business-owner' ? 'Search by company or contact...' : 'Search by name or suburb...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-reset-green"
-            />
+          {/* Search and Filters */}
+          <div className="space-y-4 mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
+              <input
+                type="text"
+                placeholder={activeTab === 'business-owner' ? 'Search by company or contact...' : 'Search by name or suburb...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-600 text-white rounded focus:outline-none focus:border-reset-green"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex gap-2 flex-wrap">
+              {['all', 'submitted', 'under-review', 'approved', 'rejected'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(status as typeof filterStatus)}
+                  className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+                    filterStatus === status
+                      ? 'bg-reset-green text-black'
+                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
+                  }`}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -188,20 +214,63 @@ export default function ContractManagement() {
                 )}
 
                 {/* Status */}
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <span className={`text-xs px-3 py-1 rounded font-bold ${
-                    contract.status === 'active'
-                      ? 'bg-reset-green/20 text-reset-green'
-                      : 'bg-gray-600/20 text-gray-400'
-                  }`}>
-                    {contract.status === 'active' ? '✓ Active' : 'Inactive'}
-                  </span>
+                <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      <span className={`text-xs px-3 py-1 rounded font-bold flex items-center gap-1 ${
+                        contract.status === 'active'
+                          ? 'bg-reset-green/20 text-reset-green'
+                          : 'bg-gray-600/20 text-gray-400'
+                      }`}>
+                        {contract.status === 'active' && <CheckCircle size={12} />}
+                        {contract.status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                      {contract.approvalStatus && (
+                        <span className={`text-xs px-3 py-1 rounded font-bold flex items-center gap-1 ${
+                          contract.approvalStatus === 'approved'
+                            ? 'bg-reset-green/20 text-reset-green'
+                            : contract.approvalStatus === 'rejected'
+                            ? 'bg-red-500/20 text-red-400'
+                            : contract.approvalStatus === 'under-review'
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {contract.approvalStatus === 'approved' && <CheckCircle size={12} />}
+                          {contract.approvalStatus === 'rejected' && <XCircle size={12} />}
+                          {contract.approvalStatus === 'under-review' && <Clock size={12} />}
+                          {contract.approvalStatus.charAt(0).toUpperCase() + contract.approvalStatus.slice(1).replace('-', ' ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {contract.approvalStatus !== 'approved' && (
+                    <button
+                      onClick={() => setSelectedContract(contract)}
+                      className="w-full px-3 py-2 text-xs bg-reset-green/20 text-reset-green border border-reset-green/30 rounded hover:bg-reset-green/30 transition-colors font-semibold"
+                    >
+                      Review Contract
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ))
           )}
         </div>
       </div>
+
+      {/* Contract Approval Panel */}
+      <AnimatePresence>
+        {selectedContract && (
+          <ContractApprovalPanel
+            contract={selectedContract}
+            onClose={() => setSelectedContract(null)}
+            onApproval={() => {
+              setSelectedContract(null);
+              addToast('Contract updated successfully!', 'success');
+            }}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

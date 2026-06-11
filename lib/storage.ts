@@ -58,3 +58,12 @@ export const uploadContractPdf = async (contractId: string, file: File): Promise
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
 };
+
+export const uploadContractDocument = async (file: File, contractId: string): Promise<string> => {
+  const timestamp = Date.now();
+  const fileExtension = file.name.split('.').pop();
+  const storageRef = ref(storage, `contract-documents/${contractId}/${timestamp}-${file.name}`);
+
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};

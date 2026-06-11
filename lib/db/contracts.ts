@@ -13,13 +13,34 @@ import {
   where,
 } from 'firebase/firestore';
 
+export interface ContractDocument {
+  id: string;
+  name: string;
+  url: string;
+  uploadedAt: Timestamp;
+  uploadedBy: string;
+}
+
+export interface ContractApprovalHistory {
+  status: 'submitted' | 'under-review' | 'approved' | 'rejected';
+  changedAt: Timestamp;
+  changedBy: string;
+  notes?: string;
+}
+
 export interface Contract {
   id: string;
   userId: string;                       // business owner or subcontractor ID
   contractType: 'business-owner' | 'subcontractor';
-  status: 'active' | 'inactive';
+  status: 'draft' | 'submitted' | 'under-review' | 'approved' | 'rejected' | 'active' | 'inactive';
+  approvalStatus?: 'submitted' | 'under-review' | 'approved' | 'rejected';
   createdAt: Timestamp;
   updatedAt?: Timestamp;
+  submittedAt?: Timestamp;
+  approvedAt?: Timestamp;
+  documents?: ContractDocument[];
+  approvalHistory?: ContractApprovalHistory[];
+  approvalNotes?: string;
 
   // --- Business Owner Contract (signup data) ---
   company?: string;
