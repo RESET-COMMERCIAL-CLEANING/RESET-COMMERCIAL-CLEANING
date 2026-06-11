@@ -52,11 +52,15 @@ export function Navbar() {
         name: `${profile.firstName} ${profile.lastName}`,
         email: profile.email,
         company: profile.company || 'N/A',
-        avatar: profile.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
+        avatar: profile.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(`${profile.firstName} ${profile.lastName}`) + '&background=3a9e68&color=fff',
       });
     } else if (currentUser) {
       // Superuser/Admin
-      setLoggedInUser(JSON.parse(currentUser));
+      const user = JSON.parse(currentUser);
+      setLoggedInUser({
+        ...user,
+        avatar: user.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name || 'Admin') + '&background=3a9e68&color=fff',
+      });
     }
   }, [pathname, isSupportPortal]);
 
@@ -208,7 +212,15 @@ export function Navbar() {
       <div className="container flex items-center justify-between h-20">
         {/* Logo */}
         <Link
-          href={isSupportPortal ? "/portal/support-member" : "/"}
+          href={
+            isSupportPortal
+              ? "/portal/support-member"
+              : isAdminPortal
+              ? "/portal/admin"
+              : isPortalPage
+              ? pathname
+              : "/"
+          }
           className="flex items-center hover:opacity-80 transition-opacity"
         >
           <img
@@ -217,6 +229,24 @@ export function Navbar() {
             className="h-14 w-auto"
           />
         </Link>
+
+        {/* Portal Navigation Links - Show only in portal pages */}
+        {isPortalPage && !isSupportLogin && (
+          <div className="hidden lg:flex items-center gap-8 text-sm">
+            <a href="/portal/admin" className="text-gray-300 hover:text-reset-green transition-colors">
+              Admin Portal
+            </a>
+            <a href="/portal/support-member" className="text-gray-300 hover:text-reset-green transition-colors">
+              Support Team
+            </a>
+            <a href="/login" className="text-gray-300 hover:text-reset-green transition-colors">
+              Client Portal
+            </a>
+            <a href="/login" className="text-gray-300 hover:text-reset-green transition-colors">
+              Subcontractor Portal
+            </a>
+          </div>
+        )}
 
         {/* Desktop Navigation - Hide on portal pages */}
         {!isPortalPage && !isSupportLogin && (
@@ -250,7 +280,7 @@ export function Navbar() {
                 </Link>
                 <Link
                   href="/signup"
-                  className="px-6 py-2 rounded-lg bg-reset-green text-black font-bold hover:bg-opacity-80 transition-all duration-300 glow-green-hover"
+                  className="px-6 py-2 rounded-lg bg-reset-green text-black font-bold hover:bg-opacity-80 transition-all duration-300"
                 >
                   Sign Up
                 </Link>
@@ -265,7 +295,7 @@ export function Navbar() {
               <img
                 src={loggedInUser?.avatar || profile.avatar}
                 alt={loggedInUser?.name || profile.name}
-                className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover border border-reset-green"
+                className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover border border-gray-400"
               />
               <span className="hidden md:inline text-sm">{loggedInUser?.name || profile.name}</span>
             </button>
@@ -291,7 +321,7 @@ export function Navbar() {
                         <img
                           src={loggedInUser?.avatar || profile.avatar}
                           alt={loggedInUser?.name || profile.name}
-                          className="w-16 h-16 rounded-lg object-cover border-2 border-reset-green mx-auto mb-3"
+                          className="w-16 h-16 rounded-lg object-cover border-2 border-gray-400 mx-auto mb-3"
                         />
                         <h3 className="text-lg font-bold text-white">{loggedInUser?.name || profile.name}</h3>
                         <p className="text-xs text-gray-400 mt-1">{loggedInUser?.role || loggedInUser?.company || profile.company}</p>

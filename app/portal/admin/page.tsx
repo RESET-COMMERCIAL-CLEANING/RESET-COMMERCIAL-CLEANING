@@ -9,7 +9,6 @@ import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
 import { Toast, useToast } from '@/components/Toast';
 import { AnimatedStats } from '@/components/AnimatedStats';
-import { PortalNavBar } from '@/components/PortalNavBar';
 import { buttonHoverVariants } from '@/lib/animations';
 import { subscribeToTickets, updateTicket, createTicket, unassignTicket, archiveTicket, deleteTicketById, addTicketComment, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
@@ -404,8 +403,7 @@ export default function AdminPortal() {
   return (
     <>
       <Toast toasts={toasts} onRemove={removeToast} />
-      <PortalNavBar />
-      <div className="min-h-screen bg-black pt-20 pb-20">
+      <div className="min-h-screen bg-black pt-32 pb-20">
         <div className="container">
           {/* Header */}
           <motion.div
