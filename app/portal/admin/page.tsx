@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { getCurrentUser } from '@/lib/auth';
 import { Toast, useToast } from '@/components/Toast';
+import { AnimatedStats } from '@/components/AnimatedStats';
+import { buttonHoverVariants } from '@/lib/animations';
 import { subscribeToTickets, updateTicket, createTicket, unassignTicket, archiveTicket, deleteTicketById, addTicketComment, type Attachment } from '@/lib/db/tickets';
 import { uploadTicketAttachment } from '@/lib/storage';
 import { subscribeToAllSupportTeam } from '@/lib/db/supportTeam';
@@ -524,13 +526,16 @@ export default function AdminPortal() {
 
             {/* Create Ticket Button */}
             <div className="mb-8 flex gap-3">
-              <button
+              <motion.button
                 onClick={() => setShowCreateTicket(!showCreateTicket)}
+                variants={buttonHoverVariants}
+                whileHover="hover"
+                whileTap="tap"
                 className="px-6 py-3 bg-reset-green text-black rounded-lg font-bold hover:bg-reset-green/80 transition-colors flex items-center gap-2"
               >
                 <Plus size={18} />
                 Create Ticket
-              </button>
+              </motion.button>
             </div>
 
             {/* Create Ticket Form */}
